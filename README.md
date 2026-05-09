@@ -1,4 +1,4 @@
-# 🎲 VTT Lite (Virtual Tabletop Lite)
+# VTT Lite (Virtual Tabletop Lite)
 
 ![VTT Lite Banner](https://via.placeholder.com/1200x400?text=VTT+Lite+-+Next+Gen+Virtual+Tabletop)
 
@@ -13,13 +13,13 @@ O **VTT Lite** é uma plataforma distribuída de gerenciamento de fichas e tabul
 
 Nascido da necessidade de simplificar sessões complexas e aliviar a sobrecarga visual na tela dos jogadores, o projeto abandona a abordagem pesada de navegadores web cheios de abas (como no FoundryVTT ou Roll20) em favor de um ecossistema **"Companion-First"** usando um programa **Desktop Leve**.
 
-## 🚀 As Grandes Inovações
+## As Grandes Inovações
 
 1. **Hospedagem "Zero-Config" (Relay Cloud):** Chega de configurar Port Forwarding, Hamachi ou pagar servidores caros. O backend atua como um semáforo de dados em nuvem. O Mestre cria a sala no seu app Desktop, e o Go Server apenas roteia os dados para os jogadores via WebSockets de ultra baixa latência.
 2. **Sistema Companion-First (Segunda Tela):** O VTT Lite roda o **Tabuleiro em Tela Cheia no PC**. Os jogadores apontam a câmera do celular para um QR Code na tela, que abre um **Mobile Web App**. O celular vira a Ficha de Personagem, Controle Remoto de Ações e Rolador de Dados.
 3. **Máquina de Estados de Servidor (FSM):** Evita trapaças e conflitos. Se dois jogadores arrastarem tokens simultaneamente, o servidor resolve a concorrência via Padrão Command e atualiza as telas instantaneamente.
 
-## 🛠️ Stack Tecnológica e Arquitetura
+## Stack Tecnológica e Arquitetura
 
 O projeto adota o padrão Monorepo para consolidar todas as pontas da infraestrutura:
 
@@ -30,7 +30,7 @@ O projeto adota o padrão Monorepo para consolidar todas as pontas da infraestru
   * **Redis (Upstash):** Para o estado "vivo" das coordenadas do mapa.
   * **PostgreSQL (Neon):** Para guardar dados duráveis das campanhas.
 
-## 📂 Organização do Repositório (Documentação)
+## Organização do Repositório (Documentação)
 
 Mergulhe nos documentos arquiteturais para entender a engenharia de software por trás do VTT Lite:
 
@@ -38,11 +38,11 @@ Mergulhe nos documentos arquiteturais para entender a engenharia de software por
 * 📱 [O Sistema de "Segunda Tela" (Mobile Companion)](./docs/COMPANION_APP.md)
 * ⚙️ [FSM (Finite State Machine) de Combate no Go](./docs/STATE_MACHINE.md)
 * 🔌 [Contratos de API e WebSockets](./docs/API_CONTRACTS.md)
-* 📋 [Board de Desenvolvimento (Kanban / Scrum)](./PROJECT_BOARD.md)
+* 📋 [Board de Desenvolvimento](./PROJECT_BOARD.md)
 
 ---
 
-## 🏃 Como Rodar (Ambiente de Desenvolvimento)
+## Como Rodar (Ambiente de Desenvolvimento)
 
 *(Esta seção será atualizada ao final do Setup da Sprint 1)*
 
