@@ -1,0 +1,14 @@
+{
+  "name": "vtt-lite",
+  "version": "1.0.0",
+  "description": "VTT Lite - Virtual Tabletop Monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:desktop": "npm run dev --workspace=desktop-client",
+    "dev:mobile": "npm run dev --workspace=mobile-companion"
+  }
+}
