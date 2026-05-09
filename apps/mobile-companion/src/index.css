@@ -1,21 +1,28 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #0d0d12;
-  --color-card: #1a1a24;
-  --color-accent: #c82333;
-  --color-health: #28a745;
-  --color-mana: #007bff;
+  --color-background: #fafafa; /* Zinc 50 */
+  --color-card: #ffffff;
+  --color-accent: #6366f1; /* Indigo 500 */
+  --color-health: #10b981; /* Emerald 500 */
+  --color-mana: #0ea5e9; /* Sky 500 */
+  --color-text-main: #18181b; /* Zinc 900 */
+  --color-text-muted: #71717a; /* Zinc 500 */
 }
 
 body {
   background-color: var(--color-background);
-  color: white;
+  color: var(--color-text-main);
   margin: 0;
   padding: 0;
   overflow: hidden;
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
-  /* Evita bounce no iOS */
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Sombra leve para botões e cards no mobile */
+.shadow-soft {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
 }
