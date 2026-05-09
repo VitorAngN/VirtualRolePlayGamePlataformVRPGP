@@ -1,176 +1,173 @@
 import React, { useState } from 'react';
 
 function App() {
-  const [roomCode] = useState('DNG-8421');
-
   return (
-    <div className="w-screen h-screen bg-background flex flex-col font-sans text-slate-900">
-      {/* Top Navbar - Clean White with elegant border */}
-      <header className="h-16 bg-panel border-b border-slate-200 flex items-center justify-between px-6 z-20 shadow-sm relative">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center font-black text-white shadow-lg shadow-indigo-500/30 text-lg">
-            V
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-800 leading-none">
-              VTT <span className="text-indigo-600">Lite</span>
-            </h1>
-            <p className="text-[11px] font-medium text-slate-500 mt-0.5 uppercase tracking-wider">A Masmorra do Dragão</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
-            <span className="text-xs text-slate-500 font-semibold">CÓDIGO DE ACESSO</span>
-            <span className="text-indigo-700 font-mono font-black tracking-widest text-lg bg-indigo-100 px-2 rounded">{roomCode}</span>
-          </div>
-          
-          <button className="bg-indigo-600 hover:bg-indigo-700 transition-colors px-5 py-2.5 rounded-xl text-white text-sm font-bold shadow-md shadow-indigo-500/20 flex items-center gap-2 active:scale-95">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
-            Convidar Jogadores
-          </button>
-        </div>
-      </header>
-
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Toolbar - Floating style */}
-        <aside className="w-20 bg-background flex flex-col items-center py-6 gap-5 z-10 border-r border-slate-200">
-          <ToolButton icon="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" active tooltip="Mover (V)" />
-          <ToolButton icon="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" tooltip="Área (A)" />
-          <ToolButton icon="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" tooltip="Desenhar (D)" />
-          <div className="w-10 h-px bg-slate-200 my-2"></div>
-          <ToolButton icon="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" tooltip="Névoa (F)" />
-        </aside>
-
-        {/* Main Canvas Area */}
-        <main className="flex-1 relative bg-grid-pattern cursor-crosshair overflow-hidden shadow-inner">
-          
-          {/* Mock Map Image Background (Forest/Grass feel to give it life) */}
-          <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-          
-          {/* Beautiful Modern Tokens */}
-          <Token x={300} y={200} color="bg-emerald-500" name="Mago (Lucas)" hp="24/24" img="🧙‍♂️" />
-          <Token x={450} y={250} color="bg-blue-500" name="Guerreiro (João)" hp="45/45" img="⚔️" />
-          <Token x={350} y={400} color="bg-rose-500" name="Goblin" hp="7/7" isEnemy img="👺" />
-          <Token x={500} y={400} color="bg-rose-500" name="Goblin" hp="2/7" isEnemy img="👺" />
-
-          {/* Distance Ruler Mock (Clean Orange line) */}
-          <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%">
-            <line x1="475" y1="275" x2="375" y2="425" stroke="#f97316" strokeWidth="3" strokeDasharray="6,6" />
-            <rect x="395" y="340" width="50" height="26" rx="13" fill="#f97316" className="shadow-md" />
-            <text x="420" y="357" fill="#fff" fontSize="13" textAnchor="middle" fontWeight="800">15m</text>
-          </svg>
-        </main>
-
-        {/* Right Sidebar - Chat & Events (Clean Card UI) */}
-        <aside className="w-96 bg-panel border-l border-slate-200 flex flex-col z-10 shadow-glass relative">
-          <div className="h-16 border-b border-slate-100 flex items-center px-6 bg-slate-50/50 backdrop-blur">
-            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-widest">Painel de Ações</h2>
-          </div>
-          
-          <div className="flex-1 p-5 flex flex-col gap-4 overflow-y-auto bg-slate-50/30">
-            {/* Event Logs */}
-            <LogEntry time="19:02" author="Sistema" text="Lucas conectou via Mobile." system />
-            <LogEntry time="19:04" author="Mestre" text="O combate começou! Rolem iniciativa." system />
-            
-            {/* Beautiful Dice Roll Event Card */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-              <div className="flex justify-between items-start mb-3 pl-2">
-                <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs">⚔️</span>
-                  João (Guerreiro)
-                </span>
-                <span className="text-xs font-semibold text-slate-400">19:05</span>
-              </div>
-              <p className="text-sm font-medium text-slate-600 mb-3 pl-2">Atacou o Goblin com <span className="font-bold text-slate-800">Espada Longa</span></p>
-              
-              <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 ml-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-400 text-xs font-bold bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm">d20</span>
-                  <span className="text-lg font-black text-slate-700">18</span>
-                </div>
-                <span className="text-slate-300 font-bold">+</span>
-                <span className="text-md font-bold text-slate-500">5</span>
-                <span className="text-slate-300 font-bold">=</span>
-                <span className="text-2xl font-black text-indigo-600">23</span>
-              </div>
-            </div>
-
-            {/* Beautiful Damage Event Card */}
-            <div className="bg-white border border-rose-200 rounded-2xl p-4 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
-              <div className="flex justify-between items-start mb-3 pl-2">
-                <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-xs">💥</span>
-                  Sistema
-                </span>
-                <span className="text-xs font-semibold text-slate-400">19:05</span>
-              </div>
-              <p className="text-sm font-medium text-slate-600 pl-2">
-                O <span className="font-bold text-rose-600 bg-rose-50 px-1 rounded">Goblin</span> sofreu dano cortante.
-              </p>
-              <div className="mt-3 ml-2 text-3xl font-black text-rose-600 tracking-tight">8 Dano</div>
-            </div>
-          </div>
-
-          {/* Clean Input Area */}
-          <div className="p-4 border-t border-slate-100 bg-white">
-            <div className="relative">
-              <input type="text" placeholder="Escreva uma mensagem..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all font-medium placeholder-slate-400" />
-              <button className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-              </button>
-            </div>
-          </div>
-        </aside>
+    <div className="w-screen h-screen relative overflow-hidden bg-black font-sans text-sm">
+      
+      {/* MAP BACKGROUND - Immersive full bleed map */}
+      <div 
+        className="absolute inset-0 bg-zinc-900"
+        style={{
+          backgroundImage: `url('https://i.pinimg.com/originals/a5/d5/d3/a5d5d36e2f1837b251fc4cf6dc6f571b.jpg')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          filter: 'brightness(0.8)'
+        }}
+      >
+        {/* Grid Overlay */}
+        <div 
+          className="absolute inset-0 pointer-events-none opacity-40"
+          style={{
+            backgroundImage: 'linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)',
+            backgroundSize: '80px 80px' // Grid size
+          }}
+        ></div>
       </div>
+
+      {/* TOP LEFT - Player List & Connection */}
+      <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
+        <div className="bg-[rgba(24,24,27,0.85)] border border-zinc-700 rounded shadow-xl backdrop-blur-md px-3 py-1.5 flex items-center gap-3">
+          <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]"></div>
+          <span className="font-semibold text-zinc-300">Gamemaster [GM]</span>
+        </div>
+        <div className="bg-[rgba(24,24,27,0.85)] border border-zinc-700 rounded shadow-xl backdrop-blur-md px-3 py-1.5 flex items-center gap-3 opacity-70">
+          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+          <span className="font-medium text-zinc-400">Lucas (Mobile)</span>
+        </div>
+      </div>
+
+      {/* LEFT TOOLBAR - Floating Compact Tools */}
+      <aside className="absolute left-4 top-24 bg-[rgba(24,24,27,0.85)] border border-zinc-700 rounded shadow-2xl backdrop-blur-md flex flex-col z-10 w-10">
+        <ToolButton icon="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" active />
+        <ToolButton icon="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+        <div className="w-full h-[1px] bg-zinc-700 my-1"></div>
+        <ToolButton icon="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        <ToolButton icon="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+        <div className="w-full h-[1px] bg-zinc-700 my-1"></div>
+        <ToolButton icon="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </aside>
+
+      {/* BOTTOM MACRO BAR */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center bg-[rgba(24,24,27,0.85)] border border-zinc-700 rounded shadow-2xl backdrop-blur-md p-1 z-10">
+        {[1,2,3,4,5,6,7,8,9,0].map((num) => (
+          <div key={num} className="w-10 h-10 border-r border-zinc-700/50 flex items-center justify-center hover:bg-zinc-700/50 cursor-pointer relative group transition-colors">
+            <span className="text-[10px] font-bold text-zinc-500 absolute top-1 left-1">{num}</span>
+            {num === 1 && <span className="text-lg">🗡️</span>}
+            {num === 2 && <span className="text-lg">🔥</span>}
+          </div>
+        ))}
+        <div className="w-10 h-10 flex items-center justify-center hover:bg-zinc-700/50 cursor-pointer text-zinc-400">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+        </div>
+      </div>
+
+      {/* RIGHT SIDEBAR - Scenes & Chat */}
+      <aside className="absolute right-0 top-0 bottom-0 w-80 bg-[rgba(24,24,27,0.95)] border-l border-zinc-800 shadow-2xl flex flex-col z-20">
+        
+        {/* Right Sidebar Nav (Tiny icons at the top) */}
+        <nav className="flex items-center justify-between px-2 py-1 bg-zinc-950 border-b border-zinc-800">
+          <div className="flex">
+            <RightNavButton icon="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" active />
+            <RightNavButton icon="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            <RightNavButton icon="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            <RightNavButton icon="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          </div>
+          <div className="w-5 h-5 rounded-full bg-orange-600 text-[10px] flex items-center justify-center font-bold text-white shadow-inner">2</div>
+        </nav>
+
+        {/* Chat Log Area */}
+        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
+          
+          <div className="text-center text-xs font-bold text-zinc-600 uppercase tracking-widest my-2 border-b border-zinc-800 pb-2">Sessão Iniciada</div>
+          
+          {/* Classic RPG Chat Card */}
+          <div className="bg-zinc-900 border border-zinc-700/50 rounded shadow-md overflow-hidden">
+            <div className="bg-zinc-800 px-3 py-1.5 border-b border-zinc-700 flex justify-between items-center">
+              <span className="font-bold text-orange-500">Mago</span>
+              <span className="text-[10px] text-zinc-500">19:42</span>
+            </div>
+            <div className="p-3">
+              <p className="text-zinc-300 italic mb-2">"Lança uma bola de fogo na torre!"</p>
+              <div className="bg-zinc-950 border border-zinc-800 p-2 rounded text-center">
+                <span className="text-xs text-zinc-500 block mb-1">Dano Flamejante (8d6)</span>
+                <span className="text-xl font-black text-orange-500">28</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-zinc-900 border border-zinc-700/50 rounded shadow-md overflow-hidden">
+            <div className="bg-zinc-800 px-3 py-1.5 border-b border-zinc-700 flex justify-between items-center">
+              <span className="font-bold text-blue-400">Guerreiro</span>
+              <span className="text-[10px] text-zinc-500">19:45</span>
+            </div>
+            <div className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-bold text-zinc-400">Ataque (Espada Longa)</span>
+              </div>
+              <div className="bg-zinc-950 border border-zinc-800 p-2 rounded flex justify-between items-center">
+                <span className="font-mono text-zinc-500 text-xs">d20 (14) + 5</span>
+                <span className="text-lg font-black text-green-500">19</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Chat Input */}
+        <div className="p-2 bg-zinc-950 border-t border-zinc-800">
+          <textarea 
+            placeholder="Digite uma mensagem ou comando /r" 
+            className="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-orange-500 resize-none h-16 placeholder-zinc-600"
+          ></textarea>
+        </div>
+      </aside>
+
+      {/* TOKENS - Classic VTT Tokens */}
+      {/* Mago */}
+      <div className="absolute cursor-grab hover:z-20 group" style={{ left: 320, top: 400 }}>
+        <div className="w-20 h-20 rounded-full border-[3px] border-zinc-300 shadow-[0_10px_20px_rgba(0,0,0,0.8)] relative overflow-hidden bg-zinc-800 flex items-center justify-center transition-transform group-hover:scale-105">
+           <img src="https://i.pinimg.com/736x/8a/a5/d8/8aa5d8b2e3e5bc14d693f1bc44b1c70e.jpg" alt="token" className="w-full h-full object-cover opacity-90" />
+           <div className="absolute inset-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] pointer-events-none"></div>
+        </div>
+        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-zinc-900 border border-zinc-700 px-2 py-0.5 rounded text-[10px] font-bold text-white shadow-lg whitespace-nowrap">
+          Lucas (Mago)
+        </div>
+        {/* HP Bar */}
+        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-16 h-1.5 bg-zinc-900 border border-zinc-700 rounded-full overflow-hidden">
+          <div className="h-full bg-green-500" style={{ width: '100%' }}></div>
+        </div>
+      </div>
+
+      {/* Inimigo */}
+      <div className="absolute cursor-grab hover:z-20 group" style={{ left: 480, top: 240 }}>
+        <div className="w-20 h-20 rounded-full border-[3px] border-red-800 shadow-[0_0_15px_rgba(220,38,38,0.4)] relative overflow-hidden bg-zinc-800 flex items-center justify-center transition-transform group-hover:scale-105">
+           <div className="text-3xl">🐺</div>
+           <div className="absolute inset-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] pointer-events-none"></div>
+        </div>
+        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-16 h-1.5 bg-zinc-900 border border-zinc-700 rounded-full overflow-hidden">
+          <div className="h-full bg-red-600" style={{ width: '30%' }}></div>
+        </div>
+      </div>
+
     </div>
   );
 }
 
-// Modern Beautiful Components
-const ToolButton = ({ icon, active = false, tooltip }: { icon: string, active?: boolean, tooltip: string }) => (
-  <div className="group relative">
-    <button className={`p-3.5 rounded-2xl transition-all duration-200 ${active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 hover:bg-indigo-700' : 'bg-white text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 shadow-sm hover:shadow-md'}`}>
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d={icon}></path>
-      </svg>
-    </button>
-    <div className="absolute left-full ml-4 top-1/2 -translate-y-1/2 bg-slate-800 text-white text-xs font-bold py-1.5 px-3 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-      {tooltip}
-      <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-slate-800"></div>
-    </div>
-  </div>
+// Subcomponents
+const ToolButton = ({ icon, active = false }: { icon: string, active?: boolean }) => (
+  <button className={`w-10 h-10 flex items-center justify-center transition-colors ${active ? 'bg-zinc-700/80 text-orange-500 shadow-[inset_2px_0_0_#f97316]' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'}`}>
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={icon}></path>
+    </svg>
+  </button>
 );
 
-const Token = ({ x, y, color, name, hp, isEnemy = false, img }: { x: number, y: number, color: string, name: string, hp: string, isEnemy?: boolean, img: string }) => (
-  <div className="absolute flex flex-col items-center gap-2 group cursor-grab hover:z-20 transition-transform hover:scale-110" style={{ left: x, top: y }}>
-    {/* Avatar Circle with beautiful shadow and border */}
-    <div className={`w-14 h-14 rounded-full ${color} flex items-center justify-center text-2xl shadow-xl shadow-black/10 relative border-[3px] border-white z-10 transition-shadow group-hover:shadow-2xl`}>
-      {img}
-      {/* HP Ring indicator */}
-      <svg className="absolute -inset-[3px] w-[calc(100%+6px)] h-[calc(100%+6px)] -rotate-90 pointer-events-none">
-        <circle cx="50%" cy="50%" r="48%" fill="none" stroke={isEnemy ? '#fda4af' : '#86efac'} strokeWidth="3" opacity="0.3" />
-        <circle cx="50%" cy="50%" r="48%" fill="none" stroke={isEnemy ? '#e11d48' : '#22c55e'} strokeWidth="3" strokeDasharray="100 100" strokeDashoffset={hp.includes('2/7') ? '70' : '0'} className="transition-all duration-500" />
-      </svg>
-    </div>
-    
-    {/* Floating Name Badge */}
-    <div className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[11px] font-bold tracking-wide border border-slate-200/50 shadow-sm text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap transform translate-y-1 group-hover:translate-y-0">
-      {name} <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] ${isEnemy ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>{hp}</span>
-    </div>
-  </div>
-);
-
-const LogEntry = ({ time, author, text, system = false }: { time: string, author: string, text: string, system?: boolean }) => (
-  <div className="flex flex-col gap-1 px-2">
-    <div className="flex items-center gap-2">
-      <span className={`text-xs font-black uppercase tracking-wider ${system ? 'text-slate-400' : 'text-indigo-600'}`}>{author}</span>
-      <span className="text-[10px] font-bold text-slate-400">{time}</span>
-    </div>
-    <p className={`text-sm font-medium ${system ? 'text-slate-500' : 'text-slate-700'}`}>{text}</p>
-  </div>
+const RightNavButton = ({ icon, active = false }: { icon: string, active?: boolean }) => (
+  <button className={`p-2 transition-colors ${active ? 'text-orange-500' : 'text-zinc-500 hover:text-zinc-300'}`}>
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={icon}></path>
+    </svg>
+  </button>
 );
 
 export default App;

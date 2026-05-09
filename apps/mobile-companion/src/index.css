@@ -1,28 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #fafafa; /* Zinc 50 */
-  --color-card: #ffffff;
-  --color-accent: #6366f1; /* Indigo 500 */
-  --color-health: #10b981; /* Emerald 500 */
-  --color-mana: #0ea5e9; /* Sky 500 */
-  --color-text-main: #18181b; /* Zinc 900 */
-  --color-text-muted: #71717a; /* Zinc 500 */
+  --color-rpg-bg: #111111;
+  --color-rpg-card: #1c1c1e;
+  --color-rpg-border: #2c2c2e;
+  --color-rpg-accent: #b91c1c; /* red-700 for blood/combat */
+  --color-rpg-gold: #d4af37;
+  --color-rpg-health: #16a34a; /* green-600 */
 }
 
 body {
-  background-color: var(--color-background);
-  color: var(--color-text-main);
+  background-color: var(--color-rpg-bg);
+  color: #e5e5e5;
   margin: 0;
   padding: 0;
   overflow: hidden;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Georgia', serif; /* Serif for that classic fantasy feel */
   overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;
-  -webkit-font-smoothing: antialiased;
-}
-
-/* Sombra leve para botões e cards no mobile */
-.shadow-soft {
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
 }
