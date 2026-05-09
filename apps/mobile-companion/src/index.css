@@ -1,13 +1,21 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  body {
-    @apply bg-background text-white m-0 p-0 overflow-hidden;
-    font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
-    /* Evita bounce no iOS */
-    overscroll-behavior-y: none;
-    -webkit-tap-highlight-color: transparent;
-  }
+@theme {
+  --color-background: #0d0d12;
+  --color-card: #1a1a24;
+  --color-accent: #c82333;
+  --color-health: #28a745;
+  --color-mana: #007bff;
+}
+
+body {
+  background-color: var(--color-background);
+  color: white;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Evita bounce no iOS */
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
 }

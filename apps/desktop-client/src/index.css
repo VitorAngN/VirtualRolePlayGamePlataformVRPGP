@@ -1,12 +1,19 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  body {
-    @apply bg-background text-white m-0 p-0 overflow-hidden;
-    font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
-  }
+@theme {
+  --color-background: #0a0a0c;
+  --color-panel: #151518;
+  --color-accent: #c82333;
+  --color-gold: #d4af37;
+}
+
+body {
+  background-color: var(--color-background);
+  color: white;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
 
 .bg-grid-pattern {
