@@ -1,0 +1,367 @@
+/* ──────────────────────────────────────────────
+   Chat Toggle Button (na barra direita)
+   ────────────────────────────────────────────── */
+.toggleBtn {
+  width: var(--toolbar-w);
+  height: var(--toolbar-w);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.toggleBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-light);
+}
+
+.toggleBtnOpen {
+  background: rgba(230, 145, 56, 0.12);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ──────────────────────────────────────────────
+   Painel lateral deslizante
+   ────────────────────────────────────────────── */
+.panel {
+  position: absolute;
+  top: 0;
+  right: var(--toolbar-w);
+  bottom: 0;
+  width: var(--chat-w);
+  --panel-hidden-x: calc(100% + var(--toolbar-w));
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 190;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
+
+  /* fechado: empurrado para fora da viewport (coberto pela rail) */
+  transform: translateX(var(--panel-hidden-x));
+  pointer-events: none;
+  transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.panelOpen {
+  transform: translateX(0);
+  pointer-events: auto;
+  z-index: 195; /* painel aberto sempre na frente durante trocas */
+}
+
+.panelExiting {
+  transform: translateX(var(--panel-hidden-x)) !important;
+  pointer-events: none;
+  z-index: 190;
+}
+
+/* ──────────────────────────────────────────────
+   Header do painel
+   ────────────────────────────────────────────── */
+.header {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-deep);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+}
+
+.headerTitle {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+/* Roll mode buttons no header */
+.rollModeGroup {
+  display: flex;
+  gap: 2px;
+}
+
+.rollModeBtn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 11px;
+  opacity: 0.5;
+  transition: opacity var(--transition), background var(--transition);
+}
+.rollModeBtn:hover     { opacity: 1; background: var(--bg-hover); }
+.rollModeBtnActive     { opacity: 1; border-color: var(--border-light); background: var(--bg-panel-light); }
+
+/* ──────────────────────────────────────────────
+   Lista de mensagens
+   ────────────────────────────────────────────── */
+.messages {
+  flex: 1;
+  min-height: 0;     /* ESSENCIAL: sem isso flex+overflow não scrolla */
+  overflow-y: auto;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: url('https://www.transparenttextures.com/patterns/black-paper.png') repeat;
+}
+
+/* ──────────────────────────────────────────────
+   Card de mensagem
+   ────────────────────────────────────────────── */
+.card {
+  background: var(--chat-bg);
+  border: 1px solid var(--chat-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  overflow: hidden;
+  color: #111;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: var(--chat-header);
+  border-bottom: 1px solid var(--chat-border);
+}
+
+.cardAvatar {
+  width: 22px;
+  height: 22px;
+  background: #888;
+  border: 1px solid var(--chat-border);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.cardSpeaker {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1a1a4a;
+  flex: 1;
+}
+
+.cardTime {
+  font-size: 10px;
+  color: #777;
+}
+
+.cardContent {
+  padding: 8px;
+}
+
+/* Tipos específicos */
+.cardTitle {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 1px;
+}
+
+.cardSubtitle {
+  font-size: 10px;
+  color: #555;
+  margin-bottom: 6px;
+}
+
+.cardBody {
+  font-size: 11px;
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+
+.cardActions {
+  border: 1px solid var(--chat-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.cardAction {
+  width: 100%;
+  padding: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  background: white;
+  border: none;
+  border-bottom: 1px solid var(--chat-border);
+  cursor: pointer;
+  text-align: center;
+}
+
+.cardAction:hover { background: #f5f5f5; }
+
+.cardDivider {
+  padding: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #555;
+  text-align: center;
+  background: #f5f5f5;
+}
+
+/* Roll */
+.rollFormula {
+  display: block;
+  font-size: 10px;
+  color: #777;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.rollResult {
+  background: white;
+  border: 1px solid var(--chat-border);
+  border-radius: 2px;
+  font-size: 26px;
+  font-weight: 900;
+  text-align: center;
+  padding: 4px 0;
+  color: #111;
+  transition: background 0.2s;
+}
+
+/* Crítico e falha */
+.rollCrit {
+  background: #fffacd;
+  border-color: #d4a800;
+  color: #7a5c00;
+}
+.rollFail {
+  background: #fff0f0;
+  border-color: #e04040;
+  color: #7a0000;
+}
+.rollBadge {
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+  color: #7a5c00;
+  margin-top: 3px;
+}
+.rollBadgeFail { color: #7a0000; }
+
+/* Image */
+.chatImg {
+  width: 100%;
+  display: block;
+  border: 1px solid #ccc;
+}
+
+/* ──────────────────────────────────────────────
+   Input area
+   ────────────────────────────────────────────── */
+.inputArea {
+  flex-shrink: 0;    /* não deixa comprimir as mensagens */
+  border-top: 1px solid var(--border);
+  background: var(--bg-deep);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.textarea {
+  width: 100%;
+  background: #0d0d0d;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  padding: 6px 8px;
+  resize: none;
+  line-height: 1.5;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.textarea::placeholder { color: var(--text-muted); font-style: italic; }
+
+.inputActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hintText {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.rollBtn {
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #111;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.rollBtn:hover { background: var(--accent-hover); }
+
+/* ── Barra de dados ── */
+.diceBar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 0 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+
+.dieBtn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 4px 2px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+  line-height: 1;
+}
+
+.dieBtn:hover {
+  background: var(--bg-hover);
+  color: var(--accent);
+  border-color: var(--border-light);
+}
+
+.dieShape {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.dieLabel {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}

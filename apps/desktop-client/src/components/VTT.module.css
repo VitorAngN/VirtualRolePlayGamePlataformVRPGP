@@ -1,0 +1,114 @@
+.root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0a0a0a;
+  isolation: isolate; /* stacking context explícito */
+}
+
+/* ── Mapa ── */
+.mapCanvas {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 39px,
+      rgba(255,255,255,0.03) 39px,
+      rgba(255,255,255,0.03) 40px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 39px,
+      rgba(255,255,255,0.03) 39px,
+      rgba(255,255,255,0.03) 40px
+    ),
+    #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mapPlaceholder {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  color: rgba(255,255,255,0.06);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* ── Rail direita ── */
+.rightRail {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 42px;
+  background: rgba(14, 14, 14, 0.94);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0;
+  gap: 2px;
+  z-index: 200;
+  pointer-events: auto; /* garante cliques mesmo durante animações */
+}
+
+.rightTabBtn {
+  width: var(--toolbar-w);
+  height: var(--toolbar-w);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.rightTabBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.rightTabBtnActive {
+  background: rgba(230, 145, 56, 0.12);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.rightRailDivider {
+  width: 24px;
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+.exitBtn {
+  width: var(--toolbar-w);
+  height: var(--toolbar-w);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-top: auto;
+  transition: background var(--transition), color var(--transition);
+}
+
+.exitBtn:hover {
+  background: rgba(220, 50, 50, 0.12);
+  color: #f44;
+  border-color: rgba(220, 50, 50, 0.3);
+}

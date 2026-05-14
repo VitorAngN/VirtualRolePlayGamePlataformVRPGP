@@ -1,0 +1,41 @@
+.toolbar {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(20, 20, 20, 0.92);
+  border: 1px solid var(--border-light);
+  z-index: 210; /* sempre acima dos painéis (190) e da rail (200) */
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+}
+
+.toolBtn {
+  width: var(--toolbar-w);
+  height: var(--toolbar-w);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.toolBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-light);
+}
+
+.toolBtn.active {
+  background: rgba(230, 145, 56, 0.12);
+  color: var(--accent);
+  border-color: var(--accent);
+}
