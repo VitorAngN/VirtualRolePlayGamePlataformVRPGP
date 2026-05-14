@@ -1,68 +1,160 @@
-# VTT Lite (Virtual Tabletop Lite)
+# VTT Lite - Virtual Tabletop Lite
 
-![VTT Lite Banner](https://via.placeholder.com/1200x400?text=VTT+Lite+-+Next+Gen+Virtual+Tabletop)
+> Status: protótipo frontend funcional, com arquitetura planejada para tempo real  
+> Disciplina: Certificadora de Competência 2 - Engenharia de Computação  
+> Autores: João Vitor Angelim Nogueira e Lucas Qualy  
+> Projeto de extensão escolhido: Lúdico, setor de RPG
 
-> **Status:** Em Planejamento / PoC (Sprint 1)  
-> **Autores:** João Vitor Angelim Nogueira & Lucas Qualy  
-> **Disciplina:** Certificadora 2 (Engenharia de Computação - UTFPR)
+## Sobre o Projeto
 
----
+O VTT Lite é um protótipo de plataforma de apoio para sessões de RPG de mesa. A proposta é oferecer uma interface digital para o Mestre do Jogo acompanhar mundos, cenas, chat, rolagens e elementos de tabuleiro em uma tela centralizada.
 
-## 📖 Sobre o Projeto
-O **VTT Lite** é uma plataforma distribuída de gerenciamento de fichas e tabuleiro virtual em tempo real, focada no sistema D&D 5e (SRD). 
+Nesta etapa, o foco principal do desenvolvimento foi o frontend desktop: uma interface inspirada em Virtual Tabletops como FoundryVTT e Roll20, mas com uma proposta mais leve e direcionada para uso didático, apresentação e evolução incremental do produto.
 
-Nascido da necessidade de simplificar sessões complexas e aliviar a sobrecarga visual na tela dos jogadores, o projeto abandona a abordagem pesada de navegadores web cheios de abas (como no FoundryVTT ou Roll20) em favor de um ecossistema **"Companion-First"** usando um programa **Desktop Leve**.
+## Problema
 
-## As Grandes Inovações
+Em sessões de RPG, principalmente em campanhas com várias pessoas, o Mestre e os jogadores precisam controlar muitas informações ao mesmo tempo: fichas, pontos de vida, condições, magias, mapa, cenas, turnos e rolagens de dados.
 
-1. **Hospedagem "Zero-Config" (Relay Cloud):** Chega de configurar Port Forwarding, Hamachi ou pagar servidores caros. O backend atua como um semáforo de dados em nuvem. O Mestre cria a sala no seu app Desktop, e o Go Server apenas roteia os dados para os jogadores via WebSockets de ultra baixa latência.
-2. **Sistema Companion-First (Segunda Tela):** O VTT Lite roda o **Tabuleiro em Tela Cheia no PC**. Os jogadores apontam a câmera do celular para um QR Code na tela, que abre um **Mobile Web App**. O celular vira a Ficha de Personagem, Controle Remoto de Ações e Rolador de Dados.
-3. **Máquina de Estados de Servidor (FSM):** Evita trapaças e conflitos. Se dois jogadores arrastarem tokens simultaneamente, o servidor resolve a concorrência via Padrão Command e atualiza as telas instantaneamente.
+Quando esse controle é feito manualmente, surgem problemas comuns:
 
-## Stack Tecnológica e Arquitetura
+- perda de tempo com cálculos e consultas durante a sessão;
+- erros no acompanhamento de vida, condições ou recursos;
+- excesso de janelas e informações espalhadas;
+- dificuldade para novos jogadores acompanharem o estado do jogo;
+- menor imersão por causa da carga operacional do sistema.
 
-O projeto adota o padrão Monorepo para consolidar todas as pontas da infraestrutura:
+## Pessoas Impactadas
 
-* **Desktop Client (O Tabuleiro):** React.js embutido no **Tauri**, rodando **PixiJS** (WebGL) para performance fluida e gráficos de alto impacto, compilando para um leve `.exe`.
-* **Mobile Companion:** React.js focado em Mobile (PWA), rodando direto no navegador do celular.
-* **Backend (O Hub):** Golang com Gorilla WebSockets focado em Goroutines concorrentes.
-* **Banco de Dados (Infra Zero-Cost):** 
-  * **Redis (Upstash):** Para o estado "vivo" das coordenadas do mapa.
-  * **PostgreSQL (Neon):** Para guardar dados duráveis das campanhas.
+O público principal são grupos de RPG vinculados ao projeto de extensão Lúdico, incluindo:
 
-## Organização do Repositório (Documentação)
+- Mestres de jogo, que precisam organizar a sessão e controlar o estado global;
+- jogadores iniciantes, que podem se perder com regras e fichas complexas;
+- participantes de atividades de extensão, oficinas ou eventos;
+- monitores e organizadores que precisam apresentar uma experiência mais acessível.
 
-Mergulhe nos documentos arquiteturais para entender a engenharia de software por trás do VTT Lite:
+## Solução Proposta
 
-* 🏗️ [A Arquitetura Completa do Sistema](./ARCHITECTURE.md)
-* 📱 [O Sistema de "Segunda Tela" (Mobile Companion)](./docs/COMPANION_APP.md)
-* ⚙️ [FSM (Finite State Machine) de Combate no Go](./docs/STATE_MACHINE.md)
-* 🔌 [Contratos de API e WebSockets](./docs/API_CONTRACTS.md)
-* 📋 [Board de Desenvolvimento](./PROJECT_BOARD.md)
+A solução proposta é um Virtual Tabletop Lite, com uma interface desktop para o Mestre e, como evolução planejada, um companion mobile para os jogadores.
 
----
+O frontend atual já apresenta:
 
-## Como Rodar (Ambiente de Desenvolvimento)
+- tela inicial para seleção de mundos/campanhas;
+- tela de detalhes do mundo e entrada na sessão;
+- tabuleiro visual com grid;
+- barra de ferramentas lateral esquerda;
+- rail lateral direita com atalhos;
+- painel de chat com mensagens, cartas e rolagens;
+- painel de cenas com busca e lista de mapas;
+- modal de criação e configuração de cenas;
+- barra inferior de macros.
 
-*(Esta seção será atualizada ao final do Setup da Sprint 1)*
+## Diferencial
 
-```bash
-# Clone o repositório
-git clone https://github.com/SeuUser/vtt-lite.git
-cd vtt-lite
+Ferramentas como FoundryVTT e Roll20 já resolvem parte desse problema, mas costumam ser completas demais para grupos pequenos, iniciantes ou contextos de oficina. O diferencial do VTT Lite é propor uma experiência mais simples e objetiva, pensada para:
 
-# Instale as dependências raiz (Exige Node.js e Golang)
-npm install
+- reduzir a sobrecarga visual;
+- separar a tela principal do Mestre do controle individual dos jogadores;
+- permitir evolução futura para tempo real com WebSockets;
+- manter uma arquitetura organizada em componentes, facilitando manutenção e apresentação acadêmica.
 
-# Subir a infra local com Docker (Opcional, caso não use a Cloud)
-docker-compose up -d
+## Estado Atual da Implementação
 
-# Rodar os clientes e servidor
-npm run dev
+O projeto está em fase de protótipo. A parte mais avançada é o desktop client em React.
+
+Implementado até agora:
+
+- estrutura em monorepo com workspaces npm;
+- aplicação desktop em React, TypeScript e Vite;
+- layout componentizado em `Launcher`, `VTT`, `LeftToolbar`, `ChatPanel`, `ScenesPanel` e `MacroBar`;
+- CSS Modules para isolar estilos por componente;
+- hook `usePanelManager` para controlar painéis laterais;
+- protótipo inicial de app mobile companion;
+- servidor Go inicial com modelos de domínio.
+
+Ainda planejado:
+
+- integração real com WebSockets;
+- persistência de campanhas, cenas e fichas;
+- regras SRD 5e completas;
+- movimentação de tokens no mapa;
+- sincronização com companion mobile;
+- empacotamento desktop com Tauri;
+- motor gráfico com PixiJS ou biblioteca equivalente para renderização avançada do mapa.
+
+## Tecnologias Utilizadas
+
+Nesta etapa:
+
+- React 19;
+- TypeScript;
+- Vite;
+- CSS Modules;
+- npm Workspaces;
+- Go, ainda em estrutura inicial de backend.
+
+Tecnologias planejadas para evolução:
+
+- WebSockets para comunicação em tempo real;
+- Tauri para empacotamento desktop;
+- PixiJS ou alternativa WebGL para o tabuleiro;
+- banco de dados para persistência;
+- Redis ou mecanismo equivalente para estado de sessão em tempo real.
+
+## Organização do Repositório
+
+```text
+vtt-lite/
+  apps/
+    desktop-client/      # Frontend principal do tabuleiro
+    mobile-companion/    # Protótipo do companion mobile
+  packages/
+    srd-core/            # Regras compartilhadas do sistema SRD
+  server/
+    cmd/api/             # Entrada do servidor Go
+    internal/domain/     # Modelos de domínio
+  docs/                  # Documentação de arquitetura e apoio
 ```
 
----
+## Como Rodar o Frontend
 
-<p align="center">
-Feito com ☕ e muito código na <strong>UTFPR</strong>.
-</p>
+Instale as dependências:
+
+```bash
+npm install
+```
+
+Execute o desktop client:
+
+```bash
+npm run dev:desktop
+```
+
+Ou diretamente pelo workspace:
+
+```bash
+npm run dev --workspace=desktop-client
+```
+
+O Vite mostrará a URL local, normalmente:
+
+```text
+http://localhost:5173/
+```
+
+## Validação
+
+Comandos usados para validar o frontend:
+
+```bash
+npm run build --workspace=desktop-client
+npm run lint --workspace=desktop-client
+```
+
+## Documentação de Apoio
+
+- [Arquitetura do Sistema](./ARCHITECTURE.md)
+- [Companion App](./docs/COMPANION_APP.md)
+- [Máquina de Estados](./docs/STATE_MACHINE.md)
+- [Contratos de API](./docs/API_CONTRACTS.md)
+- [Board de Desenvolvimento](./PROJECT_BOARD.md)
+- [Pitch e Relatório de Execução](./docs/PITCH_E_RELATORIO.md)
