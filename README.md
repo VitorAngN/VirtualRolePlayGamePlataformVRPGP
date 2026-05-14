@@ -157,4 +157,3 @@ npm run lint --workspace=desktop-client
 - [Máquina de Estados](./docs/STATE_MACHINE.md)
 - [Contratos de API](./docs/API_CONTRACTS.md)
 - [Board de Desenvolvimento](./PROJECT_BOARD.md)
-- [Pitch e Relatório de Execução](./docs/PITCH_E_RELATORIO.md)
