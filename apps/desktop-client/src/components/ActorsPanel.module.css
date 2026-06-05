@@ -1,0 +1,189 @@
+.panel {
+  position: absolute;
+  top: 0;
+  right: var(--toolbar-w);
+  bottom: 0;
+  width: min(320px, calc(100vw - var(--toolbar-w)));
+  --panel-hidden-x: calc(100% + var(--toolbar-w));
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 190;
+  box-shadow: -4px 0 24px rgba(0,0,0,0.5);
+  transform: translateX(var(--panel-hidden-x));
+  pointer-events: none;
+  transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.panelOpen {
+  transform: translateX(0);
+  pointer-events: auto;
+  z-index: 195;
+}
+
+.panelExiting {
+  transform: translateX(var(--panel-hidden-x)) !important;
+  pointer-events: none;
+  z-index: 190;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--border);
+}
+
+.panelHeader > div {
+  display: grid;
+  gap: 3px;
+}
+
+.panelHeader strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.eyebrow,
+.sectionTitle {
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.counter {
+  min-width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.createBox {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(0,0,0,0.22);
+  border-bottom: 1px solid var(--border);
+}
+
+.formRow {
+  display: grid;
+  gap: 4px;
+}
+
+.formRow span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.formRow input {
+  width: 100%;
+  min-height: 32px;
+  background: #0d0d0d;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
+.formRow input:focus {
+  outline: none;
+  border-color: rgba(230,145,56,0.5);
+}
+
+.primaryBtn {
+  min-height: 34px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #111;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.primaryBtn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.error {
+  margin: 0;
+  color: #ff8d7b;
+  font-size: 11px;
+}
+
+.actorList {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 10px;
+}
+
+.emptyState {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px dashed rgba(255,255,255,0.16);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.035);
+}
+
+.emptyState strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.emptyState span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.actorCard {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.035);
+}
+
+.actorInitial {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 999px;
+  background: #0b0b0b;
+  color: var(--accent);
+  font-weight: 900;
+}
+
+.actorCard strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

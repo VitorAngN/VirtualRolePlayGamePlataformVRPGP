@@ -1,110 +1,239 @@
-# Contratos de API (WebSockets e REST)
+# Contratos de API
 
-O VTT Lite utiliza uma arquitetura híbrida. Requisições REST são usadas para obter o estado inicial (Ações CRUD pesadas e lentas), enquanto WebSockets são usados para o fluxo do jogo em tempo real (Rápido, Event-Driven).
+Este documento descreve contratos da API Go opcional. A versao desktop local atual nao depende dessa API para abrir, criar mundo ou salvar assets.
 
----
+O caminho futuro de multiplayer/mobile pode usar uma arquitetura hibrida:
 
-## 1. REST API (Autenticação e Load Inicial)
+- REST para carregar e persistir estado estrutural: mundos, cenas, tokens e assets.
+- WebSocket para eventos em tempo real: movimento, rolagens, chat, turno e HP.
 
-As requisições REST são processadas via rotas padrão no Go (ex: usando Fiber ou Gin).
+Na versao atual, a base REST 0.1 existe como experimento. WebSocket ainda e proximo passo.
 
-### `GET /api/v1/rooms/:roomId`
-Obtém o Snapshot inicial da sala a partir do banco de dados (PostgreSQL/Neon) e atualiza o Cache no Redis, caso a sala tenha acabado de acordar.
-**Response (200 OK):**
+## Base local
+
+```text
+http://127.0.0.1:8080
+```
+
+## Health
+
+```http
+GET /health
+```
+
+Resposta:
+
 ```json
 {
-  "roomId": "123-abc",
-  "status": "EXPLORATION_MODE",
-  "mapBackground": "https://cdn.vttlite.com/maps/dungeon-1.jpg",
-  "tokens": [
-    { "id": "t1", "type": "player", "x": 5, "y": 5, "hp": 100 },
-    { "id": "t2", "type": "enemy", "x": 10, "y": 8, "hp": 30 }
-  ]
+  "service": "vtt-lite-api",
+  "status": "ok"
 }
 ```
 
----
+## REST 0.1 implementado
 
-## 2. WebSockets (O Hub em Tempo Real)
+### Mundos
 
-Uma vez que o Desktop ou o Mobile estão conectados na URL `wss://api.vttlite.com/ws/rooms/:roomId`, a comunicação acontece através da troca de mensagens JSON chamadas de "Deltas".
+```http
+GET /api/v1/worlds
+POST /api/v1/worlds
+GET /api/v1/worlds/{worldId}/snapshot
+```
 
-### Estrutura Base das Mensagens (Padrão Command)
-Toda mensagem enviada ao servidor possui a seguinte estrutura de interface:
+Criar mundo:
+
 ```json
 {
-  "event": "STRING_DO_EVENTO",
-  "payload": { ... } // Dados Dinâmicos
+  "name": "Campanha de sabado",
+  "description": "",
+  "system": "D&D 5e SRD"
 }
 ```
 
-### Principais Eventos (Client -> Server)
+Snapshot:
 
-**`MOVE_TOKEN_INTENT`**
-Enviado quando o Mestre ou Jogador tenta arrastar uma peça pelo grid.
+```json
+{
+  "world": {},
+  "scenes": [],
+  "assets": [],
+  "tokens_by_scene": {}
+}
+```
+
+## Cenas
+
+```http
+GET /api/v1/worlds/{worldId}/scenes
+POST /api/v1/worlds/{worldId}/scenes
+PATCH /api/v1/scenes/{sceneId}
+```
+
+Criar cena:
+
+```json
+{
+  "name": "Taverna do Corvo",
+  "background_asset_id": "asset_123",
+  "grid_size": 40,
+  "width": 30,
+  "height": 20,
+  "active": true
+}
+```
+
+Atualizar cena:
+
+```json
+{
+  "name": "Taverna do Corvo - Noite",
+  "active": true
+}
+```
+
+## Tokens
+
+```http
+GET /api/v1/scenes/{sceneId}/tokens
+POST /api/v1/scenes/{sceneId}/tokens
+PATCH /api/v1/tokens/{tokenId}
+DELETE /api/v1/tokens/{tokenId}
+```
+
+Criar token:
+
+```json
+{
+  "name": "Sentinela",
+  "asset_id": "asset_token",
+  "x": 12,
+  "y": 8,
+  "hp": 18,
+  "max_hp": 22,
+  "ac": 14,
+  "hidden": false
+}
+```
+
+Mover token:
+
+```json
+{
+  "x": 13,
+  "y": 9
+}
+```
+
+## Assets
+
+```http
+GET /api/v1/assets?worldId={worldId}
+POST /api/v1/assets
+GET /assets/{assetId}/{filename}
+```
+
+Upload usa `multipart/form-data`.
+
+Campos:
+
+- `file`: arquivo.
+- `kind`: `map`, `token` ou `portrait`.
+- `worldId`: mundo dono do asset.
+- `sceneId`: opcional.
+- `name`: nome amigavel.
+
+Exemplo:
+
+```bash
+curl -F "file=@mapa.png" \
+  -F "kind=map" \
+  -F "worldId=world_local" \
+  -F "name=Mapa da taverna" \
+  http://127.0.0.1:8080/api/v1/assets
+```
+
+## WebSocket planejado
+
+URL futura:
+
+```text
+ws://127.0.0.1:8080/ws/worlds/{worldId}
+```
+
+### Mensagem base
+
+```json
+{
+  "event": "EVENT_NAME",
+  "payload": {}
+}
+```
+
+### Client -> Server
+
+Mover token:
+
 ```json
 {
   "event": "MOVE_TOKEN_INTENT",
   "payload": {
-    "tokenId": "t1",
+    "tokenId": "token_123",
     "targetX": 6,
     "targetY": 5
   }
 }
 ```
 
-**`ROLL_DICE_INTENT`**
-Enviado pelo Mobile Companion quando o jogador clica em "Rolar Dano".
+Rolar dado:
+
 ```json
 {
   "event": "ROLL_DICE_INTENT",
   "payload": {
-    "diceType": "d20",
-    "modifier": 5,
-    "reason": "Ataque com Espada"
+    "formula": "1d20+5",
+    "reason": "Ataque com espada"
   }
 }
 ```
 
-### Principais Eventos (Server -> Client Broadcast)
+### Server -> Clients
 
-**`STATE_DELTA_APPLIED`**
-Enviado pelo Go Server para **todos** os clientes após validar e aplicar um Delta com sucesso no Redis. O Desktop intercepta isso e anima a mudança visual.
+Estado aplicado:
+
 ```json
 {
   "event": "STATE_DELTA_APPLIED",
   "payload": {
     "type": "MOVE_TOKEN",
-    "tokenId": "t1",
-    "newX": 6,
-    "newY": 5
+    "tokenId": "token_123",
+    "x": 6,
+    "y": 5
   }
 }
 ```
 
-**`DICE_RESULT_BROADCAST`**
-Enviado pelo servidor Go para ativar animações 3D de dados no Canvas do PC e atualizar o log do chat.
+Resultado de dado:
+
 ```json
 {
   "event": "DICE_RESULT_BROADCAST",
   "payload": {
-    "playerId": "p1",
-    "result": 18,
+    "playerId": "player_1",
+    "formula": "1d20+5",
     "total": 23,
-    "reason": "Ataque com Espada"
+    "reason": "Ataque com espada"
   }
 }
 ```
 
-## Tratamento de Erros no Socket
-Se um jogador (Mobile) enviar um ataque fora do seu turno, o servidor Go emite um evento de rejeição, que o Mobile escuta para disparar um Toast (Aviso Visual) na tela do celular.
+Erro:
 
 ```json
 {
   "event": "ERROR",
   "payload": {
     "code": "OUT_OF_TURN",
-    "message": "Aguarde seu turno para atacar."
+    "message": "Aguarde seu turno para agir."
   }
 }
 ```

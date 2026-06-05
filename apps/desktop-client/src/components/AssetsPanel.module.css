@@ -1,0 +1,302 @@
+.toggleBtn {
+  width: var(--toolbar-w);
+  height: var(--toolbar-w);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.toggleBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-light);
+}
+
+.toggleBtnOpen {
+  background: rgba(230,145,56,0.12);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.panel {
+  position: absolute;
+  top: 0;
+  right: var(--toolbar-w);
+  bottom: 0;
+  width: min(330px, calc(100vw - var(--toolbar-w)));
+  --panel-hidden-x: calc(100% + var(--toolbar-w));
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 190;
+  box-shadow: -4px 0 24px rgba(0,0,0,0.5);
+  transform: translateX(var(--panel-hidden-x));
+  pointer-events: none;
+  transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.panelOpen {
+  transform: translateX(0);
+  pointer-events: auto;
+  z-index: 195;
+}
+
+.panelExiting {
+  transform: translateX(var(--panel-hidden-x)) !important;
+  pointer-events: none;
+  z-index: 190;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--border);
+}
+
+.panelHeader > div {
+  display: grid;
+  gap: 3px;
+}
+
+.panelHeader strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.counter {
+  min-width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.uploadBox {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(0,0,0,0.22);
+  border-bottom: 1px solid var(--border);
+}
+
+.formRow {
+  display: grid;
+  gap: 4px;
+}
+
+.formRow span,
+.checkRow span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.formRow input,
+.formRow select {
+  width: 100%;
+  min-height: 32px;
+  background: #0d0d0d;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
+.formRow input:focus,
+.formRow select:focus {
+  outline: none;
+  border-color: rgba(230,145,56,0.5);
+}
+
+.filePick {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border: 1px dashed rgba(255,255,255,0.18);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.filePick input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.filePick span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkRow input {
+  accent-color: var(--accent);
+}
+
+.primaryBtn {
+  min-height: 34px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #111;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.primaryBtn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.error {
+  margin: 0;
+  color: #ff8d7b;
+  font-size: 11px;
+}
+
+.assetList {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 10px;
+}
+
+.emptyState {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.04);
+}
+
+.emptyState strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.emptyState span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.assetCard {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.035);
+}
+
+.assetPreview {
+  width: 72px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(45deg, rgba(255,255,255,0.04) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,255,255,0.04) 25%, transparent 25%),
+    #090909;
+  background-size: 10px 10px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.assetPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.assetMeta {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+}
+
+.assetMeta strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assetMeta span {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.assetActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.assetActions button {
+  justify-self: start;
+  padding: 4px 7px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.assetActions button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.assetActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}

@@ -1,159 +1,211 @@
 # VTT Lite - Virtual Tabletop Lite
 
-> Status: protótipo frontend funcional, com arquitetura planejada para tempo real  
-> Disciplina: Certificadora de Competência 2 - Engenharia de Computação  
-> Autores: João Vitor Angelim Nogueira e Lucas Qualy  
-> Projeto de extensão escolhido: Lúdico, setor de RPG
+> Status: app desktop local em construcao, com frontend funcional e storage em disco  
+> Disciplina: Certificadora de Competencia 2 - Engenharia de Computacao  
+> Autores: Joao Vitor Angelim Nogueira e Lucas Qualy  
+> Projeto de extensao escolhido: Ludico, setor de RPG
 
-## Sobre o Projeto
+## Sobre o projeto
 
-O VTT Lite é um protótipo de plataforma de apoio para sessões de RPG de mesa. A proposta é oferecer uma interface digital para o Mestre do Jogo acompanhar mundos, cenas, chat, rolagens e elementos de tabuleiro em uma tela centralizada.
+O VTT Lite e uma plataforma de apoio para sessoes de RPG de mesa. A proposta e oferecer uma interface digital para o mestre organizar mundos, cenas, mapas, chat, rolagens e elementos de tabuleiro em uma tela centralizada.
 
-Nesta etapa, o foco principal do desenvolvimento foi o frontend desktop: uma interface inspirada em Virtual Tabletops como FoundryVTT e Roll20, mas com uma proposta mais leve e direcionada para uso didático, apresentação e evolução incremental do produto.
+A direcao atual e local-first: o programa deve abrir como um aplicativo no computador, salvar mundos e imagens em disco e nao depender de hospedagem para funcionar.
 
 ## Problema
 
-Em sessões de RPG, principalmente em campanhas com várias pessoas, o Mestre e os jogadores precisam controlar muitas informações ao mesmo tempo: fichas, pontos de vida, condições, magias, mapa, cenas, turnos e rolagens de dados.
+Em sessoes de RPG, o mestre e os jogadores precisam controlar muitas informacoes ao mesmo tempo: fichas, pontos de vida, condicoes, magias, mapa, cenas, turnos e rolagens.
 
-Quando esse controle é feito manualmente, surgem problemas comuns:
+Quando esse controle e manual, surgem problemas comuns:
 
-- perda de tempo com cálculos e consultas durante a sessão;
-- erros no acompanhamento de vida, condições ou recursos;
-- excesso de janelas e informações espalhadas;
+- perda de tempo com calculos e consultas durante a sessao;
+- erros no acompanhamento de vida, condicoes ou recursos;
+- excesso de janelas e informacoes espalhadas;
 - dificuldade para novos jogadores acompanharem o estado do jogo;
-- menor imersão por causa da carga operacional do sistema.
+- menor imersao por causa da carga operacional do sistema.
 
-## Pessoas Impactadas
+## Pessoas impactadas
 
-O público principal são grupos de RPG vinculados ao projeto de extensão Lúdico, incluindo:
+O publico principal sao grupos de RPG vinculados ao projeto de extensao Ludico:
 
-- Mestres de jogo, que precisam organizar a sessão e controlar o estado global;
-- jogadores iniciantes, que podem se perder com regras e fichas complexas;
-- participantes de atividades de extensão, oficinas ou eventos;
-- monitores e organizadores que precisam apresentar uma experiência mais acessível.
+- mestres de jogo;
+- jogadores iniciantes;
+- participantes de oficinas ou eventos;
+- monitores e organizadores.
 
-## Solução Proposta
+## Solucao proposta
 
-A solução proposta é um Virtual Tabletop Lite, com uma interface desktop para o Mestre e, como evolução planejada, um companion mobile para os jogadores.
+A solucao proposta e um Virtual Tabletop Lite com uma interface desktop para o mestre e, como evolucao planejada, um companion mobile para os jogadores.
 
-O frontend atual já apresenta:
+O desktop atual ja possui:
 
-- tela inicial para seleção de mundos/campanhas;
-- tela de detalhes do mundo e entrada na sessão;
+- launcher local para mundos/campanhas;
+- aba de sistemas locais para cadastrar regras/conjuntos de jogo;
 - tabuleiro visual com grid;
 - barra de ferramentas lateral esquerda;
-- rail lateral direita com atalhos;
-- painel de chat com mensagens, cartas e rolagens;
-- painel de cenas com busca e lista de mapas;
-- modal de criação e configuração de cenas;
-- barra inferior de macros.
+- rail lateral direita com paineis;
+- painel de chat com mensagens e rolagens;
+- painel de cenas;
+- painel de assets para mapas, tokens e retratos;
+- upload de imagens para o save local;
+- aplicacao de mapa como fundo de cena;
+- criacao, movimento e exclusao de tokens;
+- criacao de token usando imagem enviada como asset;
+- barra inferior de macros;
+- storage local em `saves/`.
 
 ## Diferencial
 
-Ferramentas como FoundryVTT e Roll20 já resolvem parte desse problema, mas costumam ser completas demais para grupos pequenos, iniciantes ou contextos de oficina. O diferencial do VTT Lite é propor uma experiência mais simples e objetiva, pensada para:
+Ferramentas como Foundry VTT e Roll20 sao completas, mas podem ser pesadas ou complexas para grupos pequenos, iniciantes ou contextos de oficina. O diferencial do VTT Lite e buscar uma experiencia mais simples:
 
-- reduzir a sobrecarga visual;
-- separar a tela principal do Mestre do controle individual dos jogadores;
-- permitir evolução futura para tempo real com WebSockets;
-- manter uma arquitetura organizada em componentes, facilitando manutenção e apresentação acadêmica.
+- abrir como programa local;
+- salvar mapas/tokens no disco do usuario;
+- reduzir sobrecarga visual;
+- separar a tela do mestre do futuro companion mobile;
+- evoluir de forma incremental para sincronizacao em tempo real.
 
-## Estado Atual da Implementação
+## Estado atual da implementacao
 
-O projeto está em fase de protótipo. A parte mais avançada é o desktop client em React.
+Implementado:
 
-Implementado até agora:
-
-- estrutura em monorepo com workspaces npm;
-- aplicação desktop em React, TypeScript e Vite;
-- layout componentizado em `Launcher`, `VTT`, `LeftToolbar`, `ChatPanel`, `ScenesPanel` e `MacroBar`;
-- CSS Modules para isolar estilos por componente;
-- hook `usePanelManager` para controlar painéis laterais;
-- protótipo inicial de app mobile companion;
-- servidor Go inicial com modelos de domínio.
+- monorepo com workspaces npm;
+- desktop client em React, TypeScript, Vite e Electron;
+- componentes `Launcher`, `VTT`, `LeftToolbar`, `ChatPanel`, `ScenesPanel`, `AssetsPanel` e `MacroBar`;
+- CSS Modules;
+- hook `usePanelManager`;
+- modo programa com Electron;
+- storage local em `saves/index.json` e `saves/worlds/{worldId}/world.json`;
+- cadastro local de sistemas em `saves/index.json`;
+- assets locais em `saves/worlds/{worldId}/assets/{assetId}/`;
+- criacao e exclusao de mundos locais;
+- vinculo opcional de mundo com sistema local;
+- criacao, edicao basica e exclusao de cenas;
+- upload, aplicacao e exclusao de assets locais;
+- criacao, movimento e exclusao de tokens locais;
+- token visual com imagem quando criado a partir de asset do tipo `token`;
+- chat local com scroll, envio de mensagem e rolagens;
+- companion mobile em React com ficha e rolagens locais;
+- servidor Go inicial mantido como camada opcional/futura.
 
 Ainda planejado:
 
-- integração real com WebSockets;
-- persistência de campanhas, cenas e fichas;
-- regras SRD 5e completas;
-- movimentação de tokens no mapa;
-- sincronização com companion mobile;
-- empacotamento desktop com Tauri;
-- motor gráfico com PixiJS ou biblioteca equivalente para renderização avançada do mapa.
+- persistir mensagens do chat no `world.json`;
+- editor de token com HP, CA, nome e imagem sem prompt;
+- controle simples de iniciativa;
+- sincronizacao com companion mobile;
+- empacotamento instalavel;
+- motor grafico mais robusto para mapa, luz e grid.
 
-## Tecnologias Utilizadas
-
-Nesta etapa:
+## Tecnologias
 
 - React 19;
 - TypeScript;
 - Vite;
+- Electron;
 - CSS Modules;
 - npm Workspaces;
-- Go, ainda em estrutura inicial de backend.
+- Go como backend opcional para experimentos futuros.
 
-Tecnologias planejadas para evolução:
-
-- WebSockets para comunicação em tempo real;
-- Tauri para empacotamento desktop;
-- PixiJS ou alternativa WebGL para o tabuleiro;
-- banco de dados para persistência;
-- Redis ou mecanismo equivalente para estado de sessão em tempo real.
-
-## Organização do Repositório
+## Organizacao do repositorio
 
 ```text
 vtt-lite/
   apps/
-    desktop-client/      # Frontend principal do tabuleiro
-    mobile-companion/    # Protótipo do companion mobile
+    desktop-client/      # Programa principal: React + Electron
+    mobile-companion/    # Companion mobile planejado
   packages/
     srd-core/            # Regras compartilhadas do sistema SRD
   server/
-    cmd/api/             # Entrada do servidor Go
-    internal/domain/     # Modelos de domínio
-  docs/                  # Documentação de arquitetura e apoio
+    cmd/api/             # Entrada opcional do servidor Go
+    internal/domain/     # Modelos de dominio
+  docs/                  # Documentacao tecnica e academica
 ```
 
-## Como Rodar o Frontend
+## Como rodar
 
-Instale as dependências:
+Instale as dependencias:
 
 ```bash
 npm install
 ```
 
-Execute o desktop client:
+Execute como programa local sem localhost:
+
+```bash
+npm run program
+```
+
+Esse modo compila o frontend e abre uma janela Electron carregando os arquivos locais de `dist/`.
+
+Para gerar uma pasta com `.exe`:
+
+```bash
+npm run package:program
+```
+
+O executavel fica em:
+
+```text
+release/VTT Lite-win32-x64/VTT Lite.exe
+```
+
+Importante: no build portatil, a pasta inteira `release/VTT Lite-win32-x64/` e o programa. Nao mova apenas o `.exe` para outro lugar, porque ele precisa das DLLs e da pasta `resources/` que ficam ao lado. Use o atalho da Area de Trabalho ou abra o `.exe` dentro dessa pasta.
+
+Nesse modo, os saves ficam ao lado do executavel:
+
+```text
+release/VTT Lite-win32-x64/saves/
+```
+
+Durante desenvolvimento rapido, tambem existe:
+
+```bash
+npm run dev:program
+```
+
+Esse comando usa Vite por baixo e pode aparecer como `127.0.0.1`; ele nao e a versao final do programa.
+
+No modo local do repositorio, os saves ficam em:
+
+```text
+saves/
+```
+
+Para rodar apenas no navegador durante desenvolvimento visual:
 
 ```bash
 npm run dev:desktop
 ```
 
-Ou diretamente pelo workspace:
+Para rodar o companion mobile:
 
 ```bash
-npm run dev --workspace=desktop-client
+npm run dev:mobile
 ```
 
-O Vite mostrará a URL local, normalmente:
-
-```text
-http://localhost:5173/
-```
-
-## Validação
-
-Comandos usados para validar o frontend:
+Para rodar a API opcional:
 
 ```bash
-npm run build --workspace=desktop-client
+npm run dev:api
+```
+
+## Validacao
+
+Comandos usados para validar:
+
+```bash
 npm run lint --workspace=desktop-client
+npm run build --workspace=desktop-client
+npm run build --workspace=mobile-companion
+npm run lint --workspace=mobile-companion
 ```
 
-## Documentação de Apoio
+## Documentacao de apoio
 
+- [Indice da documentacao](./docs/INDEX.md)
+- [Backlog priorizado](./docs/BACKLOG_PRIORIZADO.md)
+- [Memoria de projeto](./docs/MEMORIA_PROJETO.md)
 - [Arquitetura do Sistema](./ARCHITECTURE.md)
-- [Companion App](./docs/COMPANION_APP.md)
-- [Máquina de Estados](./docs/STATE_MACHINE.md)
-- [Contratos de API](./docs/API_CONTRACTS.md)
+- [Estrutura funcional](./docs/APP_STRUCTURE.md)
+- [Storage de assets](./docs/ASSET_STORAGE.md)
+- [Contratos de API opcionais](./docs/API_CONTRACTS.md)
 - [Board de Desenvolvimento](./PROJECT_BOARD.md)

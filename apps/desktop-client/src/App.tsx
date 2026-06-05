@@ -6,10 +6,11 @@ type Screen = 'launcher' | 'vtt'
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('launcher')
+  const [worldId, setWorldId] = useState<string | null>(null)
 
-  if (screen === 'vtt') {
-    return <VTT onExit={() => setScreen('launcher')} />
+  if (screen === 'vtt' && worldId) {
+    return <VTT worldId={worldId} onExit={() => setScreen('launcher')} />
   }
 
-  return <Launcher onEnterWorld={() => setScreen('vtt')} />
+  return <Launcher onEnterWorld={(nextWorldId) => { setWorldId(nextWorldId); setScreen('vtt') }} />
 }

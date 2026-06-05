@@ -9,6 +9,12 @@
   ],
   "scripts": {
     "dev:desktop": "npm run dev --workspace=desktop-client",
-    "dev:mobile": "npm run dev --workspace=mobile-companion"
+    "dev:program": "npm run dev:program --workspace=desktop-client",
+    "program": "npm run program --workspace=desktop-client",
+    "package:program": "npm run package:program --workspace=desktop-client",
+    "dev:mobile": "npm run dev --workspace=mobile-companion",
+    "dev:api": "cd server && go run ./cmd/api",
+    "build:api": "cd server && go build -o bin/vtt-lite-api.exe ./cmd/api",
+    "build:program": "npm run build --workspace=desktop-client"
   }
 }

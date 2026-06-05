@@ -2,12 +2,16 @@
 node_modules/
 dist/
 build/
+release/
 .env
 .env.*.local
 .DS_Store
 
 # Go Server
 server/bin/
+server/data/
+saves/
+apps/desktop-client/saves/
 server/*.exe
 server/*.exe~
 server/*.dll

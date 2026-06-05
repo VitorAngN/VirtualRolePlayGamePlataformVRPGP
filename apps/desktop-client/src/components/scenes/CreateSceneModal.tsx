@@ -9,41 +9,46 @@ interface Props {
 export default function CreateSceneModal({ onClose, onCreate }: Props) {
   const [name, setName] = useState('')
 
+  function submit() {
+    const trimmedName = name.trim()
+    if (trimmedName) onCreate(trimmedName)
+  }
+
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modal} onClick={e => e.stopPropagation()}>
+      <div className={styles.modal} onClick={event => event.stopPropagation()}>
         <div className={styles.modalHeader}>
-          <span className={styles.modalTitle}>Create Scene</span>
-          <button className={styles.modalClose} onClick={onClose}>✕</button>
+          <span className={styles.modalTitle}>Criar cena</span>
+          <button className={styles.modalClose} onClick={onClose} type="button">x</button>
         </div>
+
         <div className={styles.modalBody}>
           <div className={styles.formRow}>
-            <label className={styles.formLabel}>Name</label>
+            <label className={styles.formLabel}>Nome</label>
             <input
               className={styles.formInput}
-              placeholder="Name"
+              placeholder="Ex: Mapa inicial"
               value={name}
               autoFocus
-              onChange={e => setName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && name.trim() && onCreate(name.trim())}
+              onChange={event => setName(event.target.value)}
+              onKeyDown={event => {
+                if (event.key === 'Enter') submit()
+              }}
             />
           </div>
-          <div className={styles.formRow}>
-            <label className={styles.formLabel}>Folder</label>
-            <select className={styles.formSelect}>
-              <option value="">— Root —</option>
-              <option>MAPAS GERAIS DE FAERUN 2</option>
-              <option>Mapas das aventuras...</option>
-            </select>
-          </div>
         </div>
+
         <div className={styles.modalFooter}>
+          <button className={styles.secondaryBtn} type="button" onClick={onClose}>
+            Cancelar
+          </button>
           <button
             className={styles.primaryBtn}
+            type="button"
             disabled={!name.trim()}
-            onClick={() => name.trim() && onCreate(name.trim())}
+            onClick={submit}
           >
-            ✔ Create Scene
+            Criar cena
           </button>
         </div>
       </div>

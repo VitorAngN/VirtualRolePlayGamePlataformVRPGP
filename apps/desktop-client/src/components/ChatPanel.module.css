@@ -1,6 +1,3 @@
-/* ──────────────────────────────────────────────
-   Chat Toggle Button (na barra direita)
-   ────────────────────────────────────────────── */
 .toggleBtn {
   width: var(--toolbar-w);
   height: var(--toolbar-w);
@@ -27,24 +24,20 @@
   border-color: var(--accent);
 }
 
-/* ──────────────────────────────────────────────
-   Painel lateral deslizante
-   ────────────────────────────────────────────── */
 .panel {
   position: absolute;
   top: 0;
   right: var(--toolbar-w);
   bottom: 0;
-  width: var(--chat-w);
+  width: min(var(--chat-w), calc(100vw - var(--toolbar-w)));
   --panel-hidden-x: calc(100% + var(--toolbar-w));
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
   background: var(--bg-panel);
   border-left: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  z-index: 190;
   box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
-
-  /* fechado: empurrado para fora da viewport (coberto pela rail) */
+  z-index: 190;
   transform: translateX(var(--panel-hidden-x));
   pointer-events: none;
   transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
@@ -53,7 +46,7 @@
 .panelOpen {
   transform: translateX(0);
   pointer-events: auto;
-  z-index: 195; /* painel aberto sempre na frente durante trocas */
+  z-index: 195;
 }
 
 .panelExiting {
@@ -62,78 +55,69 @@
   z-index: 190;
 }
 
-/* ──────────────────────────────────────────────
-   Header do painel
-   ────────────────────────────────────────────── */
 .header {
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-deep);
+  flex: 0 0 auto;
+  min-height: 38px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-height: 36px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-deep);
 }
 
 .headerTitle {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--text-secondary);
-  flex: 1;
-}
-
-/* Roll mode buttons no header */
-.rollModeGroup {
-  display: flex;
-  gap: 2px;
-}
-
-.rollModeBtn {
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
   font-size: 11px;
-  opacity: 0.5;
-  transition: opacity var(--transition), background var(--transition);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
-.rollModeBtn:hover     { opacity: 1; background: var(--bg-hover); }
-.rollModeBtnActive     { opacity: 1; border-color: var(--border-light); background: var(--bg-panel-light); }
 
-/* ──────────────────────────────────────────────
-   Lista de mensagens
-   ────────────────────────────────────────────── */
 .messages {
-  flex: 1;
-  min-height: 0;     /* ESSENCIAL: sem isso flex+overflow não scrolla */
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  padding: 8px 6px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  background: url('https://www.transparenttextures.com/patterns/black-paper.png') repeat;
+  gap: 8px;
+  padding: 8px;
+  background: #171717;
+  scrollbar-gutter: stable;
 }
 
-/* ──────────────────────────────────────────────
-   Card de mensagem
-   ────────────────────────────────────────────── */
+.emptyChat {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px dashed rgba(255,255,255,0.18);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.emptyChat strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.emptyChat span {
+  font-size: 11px;
+}
+
 .card {
-  background: var(--chat-bg);
+  flex: 0 0 auto;
+  width: 100%;
+  overflow: hidden;
   border: 1px solid var(--chat-border);
   border-radius: var(--radius-sm);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
-  overflow: hidden;
+  background: var(--chat-bg);
   color: #111;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
 }
 
 .cardHeader {
+  min-height: 32px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -145,208 +129,101 @@
 .cardAvatar {
   width: 22px;
   height: 22px;
-  background: #888;
+  flex: 0 0 auto;
   border: 1px solid var(--chat-border);
   border-radius: 2px;
-  flex-shrink: 0;
+  background: #888;
 }
 
 .cardSpeaker {
-  font-size: 12px;
-  font-weight: 700;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
   color: #1a1a4a;
-  flex: 1;
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cardTime {
-  font-size: 10px;
+  flex: 0 0 auto;
   color: #777;
+  font-size: 10px;
 }
 
 .cardContent {
   padding: 8px;
 }
 
-/* Tipos específicos */
-.cardTitle {
-  font-size: 13px;
-  font-weight: 700;
-  margin-bottom: 1px;
+.messageText {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
-.cardSubtitle {
-  font-size: 10px;
-  color: #555;
-  margin-bottom: 6px;
-}
-
-.cardBody {
-  font-size: 11px;
-  line-height: 1.5;
-  margin-bottom: 6px;
-}
-
-.cardActions {
-  border: 1px solid var(--chat-border);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.cardAction {
-  width: 100%;
-  padding: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  background: white;
-  border: none;
-  border-bottom: 1px solid var(--chat-border);
-  cursor: pointer;
-  text-align: center;
-}
-
-.cardAction:hover { background: #f5f5f5; }
-
-.cardDivider {
-  padding: 3px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #555;
-  text-align: center;
-  background: #f5f5f5;
-}
-
-/* Roll */
 .rollFormula {
   display: block;
-  font-size: 10px;
-  color: #777;
-  text-align: center;
   margin-bottom: 4px;
+  color: #777;
+  font-size: 10px;
+  text-align: center;
 }
 
 .rollResult {
-  background: white;
+  padding: 6px 0;
   border: 1px solid var(--chat-border);
   border-radius: 2px;
-  font-size: 26px;
-  font-weight: 900;
-  text-align: center;
-  padding: 4px 0;
+  background: white;
   color: #111;
-  transition: background 0.2s;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
 }
 
-/* Crítico e falha */
 .rollCrit {
-  background: #fffacd;
   border-color: #d4a800;
+  background: #fffacd;
   color: #7a5c00;
 }
+
 .rollFail {
-  background: #fff0f0;
   border-color: #e04040;
+  background: #fff0f0;
   color: #7a0000;
 }
-.rollBadge {
-  font-size: 10px;
-  font-weight: 800;
-  text-align: center;
-  color: #7a5c00;
-  margin-top: 3px;
-}
-.rollBadgeFail { color: #7a0000; }
 
-/* Image */
-.chatImg {
-  width: 100%;
-  display: block;
-  border: 1px solid #ccc;
-}
-
-/* ──────────────────────────────────────────────
-   Input area
-   ────────────────────────────────────────────── */
 .inputArea {
-  flex-shrink: 0;    /* não deixa comprimir as mensagens */
-  border-top: 1px solid var(--border);
-  background: var(--bg-deep);
-  padding: 8px;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
+  padding: 8px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-deep);
 }
 
-.textarea {
-  width: 100%;
-  background: #0d0d0d;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-size: 12px;
-  font-family: var(--font-sans);
-  padding: 6px 8px;
-  resize: none;
-  line-height: 1.5;
-}
-
-.textarea:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-.textarea::placeholder { color: var(--text-muted); font-style: italic; }
-
-.inputActions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.hintText {
-  font-size: 9px;
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-.rollBtn {
-  background: var(--accent);
-  border: none;
-  border-radius: var(--radius-sm);
-  color: #111;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 5px 12px;
-  cursor: pointer;
-  transition: background var(--transition);
-}
-
-.rollBtn:hover { background: var(--accent-hover); }
-
-/* ── Barra de dados ── */
 .diceBar {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 4px 0 2px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 2px;
 }
 
 .dieBtn {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
-  padding: 4px 2px;
-  background: transparent;
+  min-width: 0;
+  height: 28px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--text-muted);
   cursor: pointer;
+  font: inherit;
   transition: background var(--transition), color var(--transition), border-color var(--transition);
-  line-height: 1;
 }
 
 .dieBtn:hover {
@@ -355,13 +232,101 @@
   border-color: var(--border-light);
 }
 
-.dieShape {
-  font-size: 12px;
-  line-height: 1;
+.dieLabel {
+  font-size: 10px;
+  font-weight: 800;
 }
 
-.dieLabel {
-  font-size: 8px;
+.textarea {
+  width: 100%;
+  min-height: 72px;
+  max-height: 160px;
+  resize: vertical;
+  padding: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: #0d0d0d;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.inputActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hintText {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-style: italic;
+}
+
+.rollBtn {
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #111;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.rollBtn:hover {
+  background: var(--accent-hover);
+}
+
+.rollBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.contextMenu {
+  position: fixed;
+  z-index: 820;
+  width: 160px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: rgba(9, 7, 16, 0.98);
+  border: 1px solid rgba(230,145,56,0.36);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 18px 44px rgba(0,0,0,0.72);
+}
+
+.contextMenu button {
+  width: 100%;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  padding: 8px 9px;
+  text-align: left;
+}
+
+.contextMenu button:hover {
+  background: rgba(230,145,56,0.13);
+  color: #fff1cf;
+}
+
+.contextMenu .contextDanger {
+  color: #ffb4aa;
 }
