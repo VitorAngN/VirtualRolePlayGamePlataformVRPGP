@@ -95,6 +95,7 @@ Campos principais:
 - `type`
 - `data`
 - `portrait_asset_id`
+- `companion_permissions`
 - `created_at`
 - `updated_at`
 
@@ -104,6 +105,26 @@ Regras iniciais:
 - `data` guarda os valores dos campos definidos no manifesto do sistema;
 - campos legados como `hp`, `max_hp`, `ac`, `level`, `class_name` e `notes` podem existir para compatibilidade;
 - a aba de atores renderiza a ficha a partir do manifesto do sistema do mundo.
+- `companion_permissions` guarda permissoes mobile persistidas por jogador/ficha.
+
+Estrutura de `companion_permissions`:
+
+```json
+[
+  {
+    "id": "companion_permission_abc",
+    "player_name": "Jogador",
+    "permissions": {
+      "view_actor": true,
+      "adjust_hp": true,
+      "roll": true,
+      "patch_actor": false,
+      "chat": false
+    },
+    "updated_at": "2026-06-06T12:00:00.000Z"
+  }
+]
+```
 
 ## Scene
 
@@ -209,7 +230,9 @@ Regras iniciais:
 - fica em memoria no processo Electron;
 - aponta para uma unica ficha;
 - nao edita o save diretamente;
-- permissoes atuais: `view_actor`, `adjust_hp`, `roll`, `patch_actor` e `chat`.
+- envia eventos para o desktop validar e salvar;
+- permissoes atuais: `view_actor`, `adjust_hp`, `roll`, `patch_actor` e `chat`;
+- a sessao temporaria usa as permissoes persistidas na ficha quando elas existem para o jogador.
 
 ## ChatMessage
 
@@ -225,7 +248,7 @@ Campos principais:
 - `content`
 - `created_at`
 
-Na 0.1, o chat ainda esta mais forte no frontend. O backend ja reserva o modelo para persistir esse historico depois.
+Na 0.1, o chat ja e persistido no `world.json`. Mensagens criadas pelo desktop e pelo companion mobile entram na mesma lista.
 
 ## Snapshot
 

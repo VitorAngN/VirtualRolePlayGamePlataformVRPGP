@@ -27,10 +27,10 @@ Fluxo implementado:
 5. O modal mostra QR Code, links de rede local e `127.0.0.1`.
 6. O companion abre com `?token=...` e busca `/api/companion/session/:token`.
 7. A ficha mobile renderiza os campos reais do `system.json` e os valores reais do `world.json`.
-8. O mobile envia eventos reais para ajustar PV e rolar dados, respeitando permissoes.
+8. O mobile envia eventos reais para ajustar PV, editar campos, rolar dados e mandar chat, respeitando permissoes.
 9. O desktop salva os eventos no `world.json` e atualiza ficha/chat na janela aberta.
 
-Ainda nao ha WebSocket dedicado. A sincronizacao atual usa HTTP local com eventos enviados ao processo Electron.
+Agora ha WebSocket dedicado em `/api/companion/session/:token/ws`. O HTTP continua existindo como fallback para enviar acoes, mas o estado vivo da ficha/chat e recebido pelo socket.
 
 ## Papel do desktop
 
@@ -50,9 +50,9 @@ O mobile envia acoes e recebe estado:
 - rolar dados rapidos quando a sessao permite;
 - rolar campos da ficha que possuem `roll_formula` no manifesto do sistema;
 - ajustar PV quando a sessao permite;
-- editar campos permitidos da ficha em fase futura;
-- enviar mensagem de chat em fase futura;
-- receber alteracao de HP, condicao e historico de rolagem.
+- editar campos da ficha quando a sessao permite `patch_actor`;
+- enviar mensagem de chat quando a sessao permite `chat`;
+- receber alteracao de HP, campos da ficha e historico de rolagem via WebSocket.
 
 O mobile nao acessa a pasta de saves e nao edita arquivos locais diretamente.
 
@@ -74,7 +74,7 @@ Rede externa fica para uma fase posterior. Caminhos possiveis:
 - tunel opcional, como Cloudflare Tunnel;
 - relay publico apenas para eventos WebSocket, sem hospedar assets pesados.
 
-A prioridade e rede local estavel.
+A prioridade e rede local estavel. A tela de QR Code ja aceita uma URL externa/tunel opcional, mas ela so funciona se essa URL apontar para o host mobile do programa em execucao.
 
 ## Eventos iniciais
 
@@ -107,6 +107,6 @@ Eventos previstos:
 
 ## Proximos passos
 
-- Criar WebSocket/event stream de eventos.
-- Expandir edicao mobile para campos liberados alem de PV.
-- Criar tela de permissoes persistentes por jogador, nao apenas por token de sessao.
+- Melhorar a UI mobile da edicao de ficha.
+- Definir permissao por usuario permanente quando existir login/usuarios do mundo.
+- Projetar acesso externo assistido, sem depender de configuracao manual de roteador.

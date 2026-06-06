@@ -483,6 +483,12 @@
   text-transform: uppercase;
 }
 
+.companionField small {
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .companionField input {
   min-height: 38px;
   border: 1px solid var(--border-light);

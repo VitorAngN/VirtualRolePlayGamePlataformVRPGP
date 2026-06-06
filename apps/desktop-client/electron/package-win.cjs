@@ -43,6 +43,22 @@ async function copyFile(source, target) {
   await fs.copyFile(source, target)
 }
 
+async function copyNodePackage(packageName) {
+  const candidates = [
+    path.join(appRoot, 'node_modules', packageName),
+    path.join(repoRoot, 'node_modules', packageName),
+  ]
+
+  for (const source of candidates) {
+    if (await exists(source)) {
+      await copyDir(source, path.join(resourcesAppDir, 'node_modules', packageName))
+      return
+    }
+  }
+
+  throw new Error(`Pacote ${packageName} nao encontrado em node_modules.`)
+}
+
 async function normalizeSavesIndex(savesDir) {
   const indexPath = path.join(savesDir, 'index.json')
   let index = { worlds: [], systems: [] }
@@ -104,6 +120,7 @@ async function main() {
   await copyFile(path.join(appRoot, 'electron', 'local-store.cjs'), path.join(resourcesAppDir, 'electron', 'local-store.cjs'))
   await copyFile(path.join(appRoot, 'electron', 'companion-server.cjs'), path.join(resourcesAppDir, 'electron', 'companion-server.cjs'))
   await copyDir(path.join(mobileRoot, 'dist'), path.join(resourcesAppDir, 'mobile'))
+  await copyNodePackage('ws')
 
   await fs.writeFile(
     path.join(resourcesAppDir, 'package.json'),

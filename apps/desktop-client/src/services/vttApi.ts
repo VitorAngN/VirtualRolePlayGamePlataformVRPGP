@@ -129,6 +129,13 @@ export interface ApiChatMessage {
   created_at: string
 }
 
+export interface ApiActorCompanionPermission {
+  id: string
+  player_name: string
+  permissions: ApiCompanionPermissions
+  updated_at?: string
+}
+
 export interface ApiToken {
   id: string
   scene_id: string
@@ -167,6 +174,7 @@ export interface ApiActor {
   attributes?: ActorAttributes
   notes?: string
   portrait_asset_id?: string
+  companion_permissions?: ApiActorCompanionPermission[]
 }
 
 export type ApiCompanionEvent =
@@ -181,6 +189,11 @@ export type ApiCompanionEvent =
       world_id: string
       actor_id: string
       message: ApiChatMessage
+    }
+  | {
+      type: 'chat.message.deleted'
+      world_id: string
+      message_id: string
     }
 
 export interface ApiAsset {
@@ -229,12 +242,15 @@ export interface ApiCompanionSessionLink {
   player_name?: string
   permissions?: ApiCompanionPermissions
   loopback_url: string
+  public_url?: string
   urls: string[]
 }
 
 export interface CreateCompanionSessionPayload {
   player_name?: string
   permissions?: Partial<ApiCompanionPermissions>
+  public_base_url?: string
+  remember_permissions?: boolean
 }
 
 export interface UploadAssetPayload {
@@ -333,6 +349,14 @@ export function onCompanionEvent(callback: (event: ApiCompanionEvent) => void) {
   }
 
   return () => undefined
+}
+
+export async function broadcastCompanionEvent(event: ApiCompanionEvent) {
+  if (companionApi?.broadcastEvent) {
+    return companionApi.broadcastEvent(event)
+  }
+
+  return { ok: false }
 }
 
 export async function getWorlds() {

@@ -49,6 +49,13 @@ function normalizeAssetKind(kind) {
 
 const SYSTEM_FIELD_TYPES = new Set(['text', 'number', 'textarea', 'checkbox'])
 const SYSTEM_ID_PATTERN = /^[a-z0-9_]+$/
+const DEFAULT_COMPANION_PERMISSIONS = Object.freeze({
+  view_actor: true,
+  adjust_hp: true,
+  roll: true,
+  patch_actor: false,
+  chat: false,
+})
 
 function fieldId(value, fallback = 'campo') {
   return String(value || fallback)
@@ -69,6 +76,33 @@ function normalizeDefaultValue(type, value) {
     return Boolean(value)
   }
   return String(value ?? '')
+}
+
+function normalizeCompanionPermissions(permissions = {}) {
+  const normalized = { ...DEFAULT_COMPANION_PERMISSIONS }
+  for (const key of Object.keys(DEFAULT_COMPANION_PERMISSIONS)) {
+    if (Object.prototype.hasOwnProperty.call(permissions, key)) {
+      normalized[key] = Boolean(permissions[key])
+    }
+  }
+  normalized.view_actor = true
+  return normalized
+}
+
+function normalizeActorCompanionPermissions(value) {
+  if (!Array.isArray(value)) return []
+  return value
+    .map(entry => {
+      const playerName = String(entry?.player_name || entry?.playerName || '').trim()
+      if (!playerName) return null
+      return {
+        id: String(entry?.id || newId('companion_permission')),
+        player_name: playerName,
+        permissions: normalizeCompanionPermissions(entry?.permissions),
+        updated_at: String(entry?.updated_at || entry?.updatedAt || now()),
+      }
+    })
+    .filter(Boolean)
 }
 
 function normalizeSystemField(field, index = 0) {
@@ -522,7 +556,10 @@ function createLocalStore(savesDir) {
       scenes: data.scenes,
       scene_folders: data.scene_folders,
       assets: data.assets,
-      actors: data.actors,
+      actors: data.actors.map(actor => ({
+        ...actor,
+        companion_permissions: normalizeActorCompanionPermissions(actor.companion_permissions),
+      })),
       messages: data.messages,
       tokens_by_scene: tokensByScene,
     }
@@ -1030,6 +1067,7 @@ function createLocalStore(savesDir) {
       ac: asNumber(actorData.ac, 10),
       notes: String(actorData.notes || ''),
       portrait_asset_id: String(payload?.portrait_asset_id || payload?.portraitAssetId || ''),
+      companion_permissions: normalizeActorCompanionPermissions(payload?.companion_permissions || payload?.companionPermissions),
       created_at: timestamp,
       updated_at: timestamp,
     }
@@ -1062,11 +1100,48 @@ function createLocalStore(savesDir) {
         ac: asNumber(nextData.ac, actor.ac ?? 10),
         notes: String(nextData.notes || ''),
         portrait_asset_id: patch?.portrait_asset_id ?? actor.portrait_asset_id ?? '',
+        companion_permissions: Array.isArray(patch?.companion_permissions)
+          ? normalizeActorCompanionPermissions(patch.companion_permissions)
+          : normalizeActorCompanionPermissions(actor.companion_permissions),
         updated_at: timestamp,
       }
     })
     await writeWorld(data)
     return data.actors.find(actor => actor.id === actorId)
+  }
+
+  async function saveActorCompanionPermission(actorId, payload) {
+    const data = await findWorldByEntity(world => world.actors?.some(actor => actor.id === actorId))
+    const timestamp = now()
+    const playerName = String(payload?.player_name || payload?.playerName || '').trim()
+    if (!playerName) throw new Error('Nome do jogador e obrigatorio para salvar permissao mobile.')
+
+    let updatedActor = null
+    data.actors = data.actors.map(actor => {
+      if (actor.id !== actorId) return actor
+
+      const savedPermissions = normalizeActorCompanionPermissions(actor.companion_permissions)
+      const existingIndex = savedPermissions.findIndex(entry => entry.player_name.toLowerCase() === playerName.toLowerCase())
+      const grant = {
+        id: existingIndex >= 0 ? savedPermissions[existingIndex].id : newId('companion_permission'),
+        player_name: playerName,
+        permissions: normalizeCompanionPermissions(payload?.permissions),
+        updated_at: timestamp,
+      }
+      const nextPermissions = existingIndex >= 0
+        ? savedPermissions.map((entry, index) => (index === existingIndex ? grant : entry))
+        : [...savedPermissions, grant]
+
+      updatedActor = {
+        ...actor,
+        companion_permissions: nextPermissions,
+        updated_at: timestamp,
+      }
+      return updatedActor
+    })
+
+    await writeWorld(data)
+    return updatedActor
   }
 
   async function deleteActor(actorId) {
@@ -1165,6 +1240,7 @@ function createLocalStore(savesDir) {
     deleteToken,
     createActor,
     patchActor,
+    saveActorCompanionPermission,
     deleteActor,
     uploadAsset,
     deleteAsset,

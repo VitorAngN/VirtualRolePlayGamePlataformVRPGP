@@ -4,6 +4,7 @@ const http = require('node:http')
 const net = require('node:net')
 const os = require('node:os')
 const path = require('node:path')
+const { WebSocketServer } = require('ws')
 
 const DEFAULT_PORT = 5188
 const MAX_PORT_ATTEMPTS = 20
@@ -81,6 +82,28 @@ function normalizePermissions(permissions = {}) {
   }
   normalized.view_actor = true
   return normalized
+}
+
+function normalizeFieldValue(field, value) {
+  if (!field) return value
+  if (field.type === 'number') {
+    const parsed = Number(value)
+    if (!Number.isFinite(parsed)) throw new Error(`Valor numerico invalido para "${field.label || field.id}".`)
+    return parsed
+  }
+  if (field.type === 'checkbox') {
+    if (typeof value === 'string') {
+      return ['1', 'true', 'sim', 'yes', 'on'].includes(value.trim().toLowerCase())
+    }
+    return Boolean(value)
+  }
+  return String(value ?? '')
+}
+
+function savedPermissionForActor(actor, playerName) {
+  const normalizedPlayer = String(playerName || '').trim().toLowerCase()
+  if (!normalizedPlayer || !Array.isArray(actor?.companion_permissions)) return null
+  return actor.companion_permissions.find(entry => String(entry?.player_name || '').trim().toLowerCase() === normalizedPlayer) || null
 }
 
 function assertPermission(session, permission) {
@@ -223,6 +246,7 @@ function serializeSession(snapshot, sessionOrActorId) {
     actor,
     actor_type: actorType,
     assets,
+    messages: snapshot.messages || [],
     player: {
       name: typeof sessionOrActorId === 'string'
         ? actor.name
@@ -247,16 +271,64 @@ function safeStaticPath(root, pathname) {
 
 function createCompanionServer({ store, mobileDistDir, preferredPort = DEFAULT_PORT, onEvent = () => {} }) {
   const sessions = new Map()
+  const socketsByToken = new Map()
   let server = null
   let port = null
+  let websocketServer = null
 
-  function baseUrls(token) {
+  function externalUrl(publicBaseUrl, token) {
+    const rawUrl = String(publicBaseUrl || '').trim()
+    if (!rawUrl) return ''
+
+    try {
+      const url = new URL(rawUrl)
+      url.searchParams.set('token', token)
+      return url.toString()
+    } catch {
+      return ''
+    }
+  }
+
+  function baseUrls(token, publicBaseUrl = '') {
     const query = token ? `?token=${encodeURIComponent(token)}` : ''
     const lanUrls = getLanAddresses().map(address => `http://${address}:${port}/${query}`)
+    const publicUrl = token ? externalUrl(publicBaseUrl, token) : ''
+    const urls = publicUrl ? [publicUrl, ...lanUrls, `http://127.0.0.1:${port}/${query}`] : [...lanUrls, `http://127.0.0.1:${port}/${query}`]
     return {
       loopback: `http://127.0.0.1:${port}/${query}`,
-      urls: [...lanUrls, `http://127.0.0.1:${port}/${query}`],
+      public: publicUrl,
+      urls,
     }
+  }
+
+  function sendSocket(socket, payload) {
+    if (socket.readyState !== socket.OPEN) return
+    socket.send(JSON.stringify(payload))
+  }
+
+  async function sendSessionToSocket(socket, session) {
+    const snapshot = await store.getWorldSnapshot(session.worldId)
+    sendSocket(socket, { type: 'session', session: serializeSession(snapshot, session) })
+  }
+
+  function broadcastToSessionToken(token, payload) {
+    const sockets = socketsByToken.get(token)
+    if (!sockets) return
+    for (const socket of sockets) {
+      sendSocket(socket, payload)
+    }
+  }
+
+  function broadcastToWorld(worldId, event) {
+    for (const [token, session] of sessions) {
+      if (session.worldId !== worldId) continue
+      broadcastToSessionToken(token, { type: 'event', event })
+    }
+  }
+
+  function publishEvent(event) {
+    onEvent(event)
+    broadcastToWorld(event.world_id, event)
   }
 
   async function handleApi(req, res, url) {
@@ -367,7 +439,36 @@ function createCompanionServer({ store, mobileDistDir, preferredPort = DEFAULT_P
         actor_id: session.actorId,
         actor,
       }
-      onEvent(event)
+      publishEvent(event)
+      return { ok: true, event, session: serializeSession(nextSnapshot, session) }
+    }
+
+    if (type === 'actor.patch') {
+      assertPermission(session, 'patch_actor')
+      const snapshot = await store.getWorldSnapshot(session.worldId)
+      const currentActor = snapshot.actors.find(item => item.id === session.actorId)
+      if (!currentActor) throw new Error('Ficha nao encontrada.')
+      const actorType = snapshot.system?.actor_types?.find(item => item.id === currentActor.type)
+        ?? snapshot.system?.actor_types?.[0]
+        ?? null
+      const fieldId = String(payload.field_id || payload.fieldId || '').trim()
+      const field = actorType?.fields?.find(item => item.id === fieldId)
+      if (!field) throw new Error('Campo da ficha nao encontrado neste sistema.')
+
+      const actor = await store.patchActor(session.actorId, {
+        data: {
+          ...(currentActor.data || {}),
+          [field.id]: normalizeFieldValue(field, payload.value),
+        },
+      })
+      const nextSnapshot = await store.getWorldSnapshot(session.worldId)
+      const event = {
+        type: 'actor.updated',
+        world_id: session.worldId,
+        actor_id: session.actorId,
+        actor,
+      }
+      publishEvent(event)
       return { ok: true, event, session: serializeSession(nextSnapshot, session) }
     }
 
@@ -394,7 +495,34 @@ function createCompanionServer({ store, mobileDistDir, preferredPort = DEFAULT_P
         actor_id: session.actorId,
         message,
       }
-      onEvent(event)
+      publishEvent(event)
+      return { ok: true, event, session: serializeSession(nextSnapshot, session) }
+    }
+
+    if (type === 'chat.message.create') {
+      assertPermission(session, 'chat')
+      const textBody = String(payload.text || '').trim()
+      if (!textBody) throw new Error('Mensagem vazia.')
+
+      const snapshot = await store.getWorldSnapshot(session.worldId)
+      const actor = snapshot.actors.find(item => item.id === session.actorId)
+      if (!actor) throw new Error('Ficha nao encontrada.')
+
+      const message = await store.createMessage(session.worldId, {
+        speaker: session.playerName || actor.name,
+        type: 'text',
+        text: textBody,
+        formula: '',
+        rolls: [],
+      })
+      const nextSnapshot = await store.getWorldSnapshot(session.worldId)
+      const event = {
+        type: 'chat.message.created',
+        world_id: session.worldId,
+        actor_id: session.actorId,
+        message,
+      }
+      publishEvent(event)
       return { ok: true, event, session: serializeSession(nextSnapshot, session) }
     }
 
@@ -442,6 +570,50 @@ function createCompanionServer({ store, mobileDistDir, preferredPort = DEFAULT_P
         json(res, 500, { error: error.message || 'Erro no servidor companion.' })
       }
     })
+    websocketServer = new WebSocketServer({ noServer: true })
+    server.on('upgrade', (req, socket, head) => {
+      const url = new URL(req.url || '/', `http://${req.headers.host || `127.0.0.1:${port}`}`)
+      const socketMatch = url.pathname.match(/^\/api\/companion\/session\/([^/]+)\/ws$/)
+      if (!socketMatch) {
+        socket.destroy()
+        return
+      }
+
+      const token = decodeURIComponent(socketMatch[1])
+      const session = sessions.get(token)
+      if (!session || !websocketServer) {
+        socket.destroy()
+        return
+      }
+
+      websocketServer.handleUpgrade(req, socket, head, ws => {
+        const sockets = socketsByToken.get(token) || new Set()
+        sockets.add(ws)
+        socketsByToken.set(token, sockets)
+
+        ws.on('close', () => {
+          sockets.delete(ws)
+          if (sockets.size === 0) {
+            socketsByToken.delete(token)
+          }
+        })
+
+        ws.on('message', rawMessage => {
+          try {
+            const body = JSON.parse(String(rawMessage))
+            if (body?.type === 'ping') {
+              sendSocket(ws, { type: 'pong', at: new Date().toISOString() })
+            }
+          } catch {
+            sendSocket(ws, { type: 'error', error: 'Mensagem WebSocket invalida.' })
+          }
+        })
+
+        sendSessionToSocket(ws, session).catch(error => {
+          sendSocket(ws, { type: 'error', error: error.message || 'Falha ao carregar sessao.' })
+        })
+      })
+    })
 
     await new Promise((resolve, reject) => {
       server.once('error', reject)
@@ -465,8 +637,18 @@ function createCompanionServer({ store, mobileDistDir, preferredPort = DEFAULT_P
     if (!actor) throw new Error('Ficha nao encontrada.')
 
     const token = crypto.randomBytes(18).toString('base64url')
-    const permissions = normalizePermissions(options?.permissions)
     const playerName = String(options?.player_name || options?.playerName || actor.name).trim() || actor.name
+    const savedGrant = savedPermissionForActor(actor, playerName)
+    const permissions = normalizePermissions(options?.permissions || savedGrant?.permissions)
+    let sessionActor = actor
+
+    if (options?.remember_permissions !== false && typeof store.saveActorCompanionPermission === 'function') {
+      sessionActor = await store.saveActorCompanionPermission(actorId, {
+        player_name: playerName,
+        permissions,
+      }) || actor
+    }
+
     sessions.set(token, {
       actorId,
       worldId,
@@ -475,32 +657,48 @@ function createCompanionServer({ store, mobileDistDir, preferredPort = DEFAULT_P
       createdAt: new Date().toISOString(),
     })
 
-    const urls = baseUrls(token)
+    const urls = baseUrls(token, options?.public_base_url || options?.publicBaseUrl)
     return {
       token,
       actor_id: actorId,
-      actor_name: actor.name,
+      actor_name: sessionActor.name,
       world_id: worldId,
       world_name: snapshot.world.name,
       player_name: playerName,
       permissions,
       loopback_url: urls.loopback,
+      public_url: urls.public,
       urls: urls.urls,
     }
   }
 
+  function broadcastWorldEvent(event) {
+    if (!event?.world_id) return { ok: false }
+    broadcastToWorld(event.world_id, event)
+    return { ok: true }
+  }
+
   function close() {
     if (!server) return
+    for (const sockets of socketsByToken.values()) {
+      for (const socket of sockets) {
+        socket.close()
+      }
+    }
+    websocketServer?.close()
     server.close()
     server = null
     port = null
+    websocketServer = null
     sessions.clear()
+    socketsByToken.clear()
   }
 
   return {
     ensureStarted,
     getStatus,
     createSession,
+    broadcastWorldEvent,
     close,
   }
 }

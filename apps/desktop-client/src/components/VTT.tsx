@@ -11,6 +11,7 @@ import ActorSheetWindow from './ActorSheetWindow'
 import MacroBar, { type MacroAction } from './MacroBar'
 import type { Scene } from './scenes/types'
 import {
+  broadcastCompanionEvent,
   createActor,
   createCompanionSession,
   createMessage,
@@ -61,8 +62,8 @@ const COMPANION_PERMISSION_OPTIONS: Array<{ id: keyof ApiCompanionPermissions; l
   { id: 'view_actor', label: 'Ver ficha', detail: 'Permite abrir a ficha no celular.', locked: true },
   { id: 'adjust_hp', label: 'Alterar PV', detail: 'Permite usar os botoes de dano/cura.' },
   { id: 'roll', label: 'Rolar dados', detail: 'Permite rolagens rapidas e campos com formula.' },
-  { id: 'patch_actor', label: 'Editar ficha', detail: 'Reservado para a proxima etapa.' },
-  { id: 'chat', label: 'Enviar chat', detail: 'Reservado para a proxima etapa.' },
+  { id: 'patch_actor', label: 'Editar ficha', detail: 'Permite editar campos da ficha pelo celular.' },
+  { id: 'chat', label: 'Enviar chat', detail: 'Permite enviar mensagens pelo celular.' },
 ]
 
 const RIGHT_TABS = [
@@ -114,7 +115,29 @@ interface MeasureState {
 const INITIAL_TOKENS: Token[] = []
 
 function preferredCompanionUrl(link: ApiCompanionSessionLink) {
+  if (link.public_url) return link.public_url
   return link.urls.find(url => !url.includes('127.0.0.1') && !url.includes('localhost')) ?? link.loopback_url
+}
+
+function upsertCompanionPermission(actor: ApiActor, playerName: string, permissions: ApiCompanionPermissions): ApiActor {
+  const normalizedName = playerName.trim()
+  if (!normalizedName) return actor
+
+  const savedPermissions = actor.companion_permissions || []
+  const existing = savedPermissions.find(entry => entry.player_name.toLowerCase() === normalizedName.toLowerCase())
+  const grant = {
+    id: existing?.id || `companion_permission_${Date.now()}`,
+    player_name: normalizedName,
+    permissions,
+    updated_at: new Date().toISOString(),
+  }
+
+  return {
+    ...actor,
+    companion_permissions: existing
+      ? savedPermissions.map(entry => (entry.id === existing.id ? grant : entry))
+      : [...savedPermissions, grant],
+  }
 }
 
 function RightTabBtn({ icon, title, isOpen, onClick }: { icon: string; title: string; isOpen?: boolean; onClick: () => void }) {
@@ -300,6 +323,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
   const [companionLink, setCompanionLink] = useState<ApiCompanionSessionLink | null>(null)
   const [companionActor, setCompanionActor] = useState<ApiActor | null>(null)
   const [companionPlayerName, setCompanionPlayerName] = useState('')
+  const [companionPublicBaseUrl, setCompanionPublicBaseUrl] = useState('')
   const [companionPermissions, setCompanionPermissions] = useState<ApiCompanionPermissions>(DEFAULT_COMPANION_PERMISSIONS)
   const [companionError, setCompanionError] = useState('')
   const [isCreatingCompanionLink, setIsCreatingCompanionLink] = useState(false)
@@ -423,6 +447,10 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
         if (prev.some(message => message.id === event.message.id)) return prev
         return [...prev, event.message]
       })
+    }
+
+    if (event.type === 'chat.message.deleted') {
+      setMessages(prev => prev.filter(message => message.id !== event.message_id))
     }
   }), [worldId])
 
@@ -836,14 +864,28 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
   async function handleCreateChatMessage(payload: Omit<ApiChatMessage, 'id' | 'world_id' | 'created_at'>) {
     const message = await createMessage(worldId, payload)
     setMessages(prev => [...prev, message])
+    void broadcastCompanionEvent({
+      type: 'chat.message.created',
+      world_id: worldId,
+      actor_id: '',
+      message,
+    })
     return message
   }
 
   function handleDeleteChatMessage(message: ApiChatMessage) {
     setMessages(prev => prev.filter(item => item.id !== message.id))
-    deleteMessage(message.id).catch(() => {
-      setMessages(prev => [...prev, message].sort((a, b) => a.created_at.localeCompare(b.created_at)))
-    })
+    deleteMessage(message.id)
+      .then(() => {
+        void broadcastCompanionEvent({
+          type: 'chat.message.deleted',
+          world_id: worldId,
+          message_id: message.id,
+        })
+      })
+      .catch(() => {
+        setMessages(prev => [...prev, message].sort((a, b) => a.created_at.localeCompare(b.created_at)))
+      })
   }
 
   function handleMacroRun(macro: MacroAction) {
@@ -974,6 +1016,12 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
   async function handlePatchActor(actorId: string, payload: Partial<ApiActor>) {
     const actor = await patchActor(actorId, payload)
     setActors(prev => prev.map(item => (item.id === actor.id ? actor : item)))
+    void broadcastCompanionEvent({
+      type: 'actor.updated',
+      world_id: worldId,
+      actor_id: actor.id,
+      actor,
+    })
     return actor
   }
 
@@ -982,6 +1030,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
     setCompanionLink(null)
     setCompanionActor(null)
     setCompanionPlayerName('')
+    setCompanionPublicBaseUrl('')
     setCompanionPermissions(DEFAULT_COMPANION_PERMISSIONS)
     setIsCreatingCompanionLink(false)
   }
@@ -990,8 +1039,10 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
     setCompanionError('')
     setCompanionLink(null)
     setCompanionActor(actor)
-    setCompanionPlayerName(actor.name)
-    setCompanionPermissions(DEFAULT_COMPANION_PERMISSIONS)
+    const savedGrant = actor.companion_permissions?.[0]
+    setCompanionPlayerName(savedGrant?.player_name || actor.name)
+    setCompanionPublicBaseUrl('')
+    setCompanionPermissions(savedGrant?.permissions || DEFAULT_COMPANION_PERMISSIONS)
   }
 
   function toggleCompanionPermission(permission: keyof ApiCompanionPermissions) {
@@ -1011,8 +1062,14 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
       const link = await createCompanionSession(worldId, companionActor.id, {
         player_name: companionPlayerName.trim() || companionActor.name,
         permissions: companionPermissions,
+        public_base_url: companionPublicBaseUrl.trim(),
+        remember_permissions: true,
       })
       setCompanionLink(link)
+      const playerName = link.player_name || companionPlayerName.trim() || companionActor.name
+      const nextActor = upsertCompanionPermission(companionActor, playerName, link.permissions || companionPermissions)
+      setCompanionActor(nextActor)
+      setActors(prev => prev.map(actor => (actor.id === nextActor.id ? nextActor : actor)))
       const preferredUrl = preferredCompanionUrl(link)
       await navigator.clipboard?.writeText(preferredUrl).catch(() => undefined)
     } catch (error) {
@@ -1332,6 +1389,16 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
                       onChange={event => setCompanionPlayerName(event.target.value)}
                       placeholder={companionActor.name}
                     />
+                  </label>
+
+                  <label className={styles.companionField}>
+                    <span>URL externa/tunel opcional</span>
+                    <input
+                      value={companionPublicBaseUrl}
+                      onChange={event => setCompanionPublicBaseUrl(event.target.value)}
+                      placeholder="https://seu-tunel.exemplo"
+                    />
+                    <small>Use apenas se essa URL apontar para o host mobile deste programa.</small>
                   </label>
 
                   <div className={styles.companionPermissionList}>

@@ -45,14 +45,18 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - [feito-base] Definir servidor local embutido no desktop para hospedar o companion mobile.
 - [feito-base] Criar tela de conexao mobile por token/link local.
 - [feito] Criar QR Code a partir do link local do companion.
-- Criar servidor WebSocket basico.
-- Conectar desktop ao WebSocket.
-- Conectar mobile ao WebSocket.
+- [feito-base] Criar servidor WebSocket basico.
+- [feito-base] Conectar desktop ao WebSocket.
+- [feito-base] Conectar mobile ao WebSocket.
 - [feito] Enviar rolagem do mobile para o chat do desktop via HTTP local.
 - [feito] Enviar alteracao de HP do mobile para o estado da sessao via HTTP local.
 - [feito] Permissoes por sessao mobile para ajustar PV e rolar dados.
 - [feito] Rolar campos da ficha mobile usando `roll_formula` do sistema.
-- Criar codigo de sala ou QR Code simulado.
+- [feito-base] Editar campos da ficha pelo mobile quando permitido.
+- [feito-base] Enviar chat pelo mobile quando permitido.
+- [feito-base] Persistir permissoes mobile por jogador/ficha.
+- Criar codigo de sala local amigavel.
+- Criar tunel/acesso externo assistido.
 
 ## P3 - Persistencia
 
@@ -65,6 +69,7 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - Definir banco de dados para 1.0.
 - [feito] Persistir personagens/atores no `world.json`.
 - [feito] Persistir historico de chat local no `world.json`.
+- [feito-base] Persistir permissoes companion em `actor.companion_permissions`.
 
 ## P4 - Regras e motor de jogo
 
@@ -99,6 +104,8 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - Protótipo de chat, cenas, toolbar e macrobar.
 - Protótipo de ficha mobile com rolagens e historico local.
 - Companion mobile conectado por token a ficha real do mundo local.
+- Companion mobile com WebSocket para receber ficha/chat vivos.
+- Companion mobile com edicao de campos e envio de chat controlados por permissao.
 - Modo programa local com Electron.
 - Storage local em `saves/`.
 - Backend Go inicial mantido como base opcional/futura.

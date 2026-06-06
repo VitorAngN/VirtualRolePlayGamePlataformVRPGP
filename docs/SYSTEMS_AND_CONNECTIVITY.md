@@ -177,10 +177,13 @@ Na base atual, o servidor embutido serve o build do `apps/mobile-companion` e ex
 - `GET /api/health`
 - `GET /api/companion/session/:token`
 - `POST /api/companion/session/:token/events`
+- `WS /api/companion/session/:token/ws`
 - `GET /api/companion/assets/:worldId/:assetId/:filename`
 
 O token fica em memoria no processo Electron e aponta para uma ficha especifica de um mundo especifico.
-Os eventos implementados agora sao `actor.hp.adjust` e `actor.roll`. O token tambem guarda permissoes como `view_actor`, `adjust_hp`, `roll`, `patch_actor` e `chat`.
+Os eventos implementados agora sao `actor.hp.adjust`, `actor.roll`, `actor.patch` e `chat.message.create`. O token tambem guarda permissoes como `view_actor`, `adjust_hp`, `roll`, `patch_actor` e `chat`.
+
+As permissoes escolhidas no modal mobile sao persistidas em `actor.companion_permissions`, dentro do `world.json`, por nome do jogador e ficha. O token da sessao continua temporario, mas a configuracao de acesso nao se perde ao reabrir o mundo.
 
 ## Rede externa
 
@@ -191,6 +194,8 @@ Para fora da rede local, existem tres caminhos futuros:
 - existe um relay publico do VTT Lite, apenas para encaminhar WebSocket, sem armazenar assets pesados.
 
 A prioridade inicial e rede local. Rede externa entra depois que o modo local estiver estavel.
+
+Na 0.1, o modal de link mobile tem um campo para URL externa/tunel opcional. Ele nao cria o tunel automaticamente; apenas troca o link/QR Code quando o usuario ja apontou uma URL externa para o host local do programa.
 
 ## Eventos do mobile
 
@@ -211,10 +216,10 @@ O desktop valida, calcula, salva e transmite o resultado.
 
 Eventos principais:
 
-- `chat.message.create`
+- `[feito-base] chat.message.create`
 - `chat.message.delete`
-- `actor.roll`
-- `actor.patch`
+- `[feito-base] actor.roll`
+- `[feito-base] actor.patch`
 - `token.move`
 - `scene.activate`
 - `initiative.update`
@@ -240,4 +245,8 @@ Permissoes iniciais:
 7. [feito-base] Criar servidor local embutido no desktop.
 8. [feito-base] Criar tela de conexao mobile por token.
 9. [feito] Criar QR Code de conexao.
-10. Criar WebSocket de eventos.
+10. [feito-base] Criar WebSocket de eventos.
+11. [feito-base] Permitir edicao mobile de campos da ficha via manifesto.
+12. [feito-base] Permitir chat mobile persistido.
+13. Criar import/export de sistema pelo launcher.
+14. Criar conexao externa assistida por tunel.

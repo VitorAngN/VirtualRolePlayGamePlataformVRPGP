@@ -63,12 +63,25 @@ interface ApiAsset {
   companion_url?: string;
 }
 
+interface ApiChatMessage {
+  id: string;
+  world_id: string;
+  speaker: string;
+  type: 'text' | 'roll';
+  text: string;
+  formula?: string;
+  result?: number;
+  rolls?: number[];
+  created_at: string;
+}
+
 interface CompanionSession {
   world: ApiWorld;
   system: ApiGameSystem | null;
   actor: ApiActor;
   actor_type: ApiSystemActorType | null;
   assets: ApiAsset[];
+  messages?: ApiChatMessage[];
   player?: {
     name: string;
   };
@@ -90,6 +103,33 @@ interface CompanionEventResponse {
   error?: string;
 }
 
+type CompanionEvent =
+  | {
+      type: 'actor.updated';
+      world_id: string;
+      actor_id: string;
+      actor: ApiActor;
+    }
+  | {
+      type: 'chat.message.created';
+      world_id: string;
+      actor_id?: string;
+      message: ApiChatMessage;
+    }
+  | {
+      type: 'chat.message.deleted';
+      world_id: string;
+      message_id: string;
+    };
+
+type CompanionSocketMessage =
+  | { type: 'session'; session: CompanionSession }
+  | { type: 'event'; event: CompanionEvent }
+  | { type: 'pong'; at: string }
+  | { type: 'error'; error: string };
+
+type ConnectionState = 'connecting' | 'live' | 'fallback';
+
 const statusFieldIds = ['hp', 'max_hp', 'ac', 'level', 'class_name', 'ancestry'];
 const quickDice = [4, 6, 8, 10, 12, 20, 100];
 const defaultPermissions: CompanionPermissions = {
@@ -107,6 +147,35 @@ function getInitialToken() {
 function getApiBase() {
   const query = new URLSearchParams(window.location.search);
   return query.get('apiBase') || query.get('apiBaseUrl') || window.location.origin;
+}
+
+function companionWsUrl(apiBase: string, token: string) {
+  const url = new URL(`/api/companion/session/${encodeURIComponent(token)}/ws`, apiBase);
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  return url.toString();
+}
+
+function applyCompanionEvent(session: CompanionSession, event: CompanionEvent): CompanionSession {
+  if (event.world_id !== session.world.id) return session;
+
+  if (event.type === 'actor.updated' && event.actor.id === session.actor.id) {
+    return { ...session, actor: event.actor };
+  }
+
+  if (event.type === 'chat.message.created') {
+    const messages = session.messages || [];
+    if (messages.some(message => message.id === event.message.id)) return session;
+    return { ...session, messages: [...messages, event.message] };
+  }
+
+  if (event.type === 'chat.message.deleted') {
+    return {
+      ...session,
+      messages: (session.messages || []).filter(message => message.id !== event.message_id),
+    };
+  }
+
+  return session;
 }
 
 function valueFor(actor: ApiActor, field: ApiSystemField | { id: string; default_value?: string | number | boolean }) {
@@ -174,6 +243,7 @@ function App() {
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
   const [pendingAction, setPendingAction] = useState('');
+  const [connectionState, setConnectionState] = useState<ConnectionState>('connecting');
   const [apiBase] = useState(getApiBase);
   const loadState = !token ? 'idle' : error ? 'error' : session ? 'ready' : 'loading';
 
@@ -204,12 +274,57 @@ function App() {
     return () => controller.abort();
   }, [apiBase, token]);
 
+  useEffect(() => {
+    if (!token) return;
+
+    let closedByEffect = false;
+    const socket = new WebSocket(companionWsUrl(apiBase, token));
+
+    socket.onopen = () => {
+      if (!closedByEffect) setConnectionState('live');
+    };
+
+    socket.onmessage = event => {
+      try {
+        const body = JSON.parse(String(event.data)) as CompanionSocketMessage;
+        if (body.type === 'session') {
+          setSession(body.session);
+          setError('');
+          return;
+        }
+        if (body.type === 'event') {
+          setSession(current => (current ? applyCompanionEvent(current, body.event) : current));
+          return;
+        }
+        if (body.type === 'error') {
+          setActionError(body.error);
+        }
+      } catch {
+        setActionError('Mensagem WebSocket invalida.');
+      }
+    };
+
+    socket.onerror = () => {
+      if (!closedByEffect) setConnectionState('fallback');
+    };
+
+    socket.onclose = () => {
+      if (!closedByEffect) setConnectionState(current => (current === 'live' ? 'fallback' : current));
+    };
+
+    return () => {
+      closedByEffect = true;
+      socket.close();
+    };
+  }, [apiBase, token]);
+
   function handleConnect(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextToken = tokenInput.trim();
     setSession(null);
     setError('');
     setActionError('');
+    setConnectionState(nextToken ? 'connecting' : 'fallback');
     setToken(nextToken);
     const url = new URL(window.location.href);
     if (nextToken) {
@@ -310,9 +425,12 @@ function App() {
   return (
     <ConnectedSheet
       actionError={actionError}
+      connectionState={connectionState}
       onAdjustHp={delta => sendCompanionEvent('actor.hp.adjust', { delta })}
+      onPatchField={(field, value) => sendCompanionEvent('actor.patch', { field_id: field.id, value })}
       onRollDie={sides => sendCompanionEvent('actor.roll', { label: `d${sides}`, formula: `1d${sides}` })}
       onRollField={field => sendCompanionEvent('actor.roll', { label: field.label, formula: field.roll_formula || '1d20' })}
+      onSendChat={text => sendCompanionEvent('chat.message.create', { text })}
       pendingAction={pendingAction}
       session={session}
     />
@@ -341,16 +459,22 @@ function CenteredStatus({ title, detail }: { title: string; detail: string }) {
 
 function ConnectedSheet({
   actionError,
+  connectionState,
   onAdjustHp,
+  onPatchField,
   onRollDie,
   onRollField,
+  onSendChat,
   pendingAction,
   session,
 }: {
   actionError: string;
+  connectionState: ConnectionState;
   onAdjustHp: (delta: number) => void;
+  onPatchField: (field: ApiSystemField, value: string | number | boolean) => void;
   onRollDie: (sides: number) => void;
   onRollField: (field: ApiSystemField) => void;
+  onSendChat: (text: string) => void;
   pendingAction: string;
   session: CompanionSession;
 }) {
@@ -370,6 +494,15 @@ function ConnectedSheet({
   const ancestry = stringValue(actor, 'ancestry', '');
   const isBusy = Boolean(pendingAction);
   const permissions = normalizePermissions(session.permissions);
+  const [chatDraft, setChatDraft] = useState('');
+
+  function handleSendChat(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const text = chatDraft.trim();
+    if (!text) return;
+    onSendChat(text);
+    setChatDraft('');
+  }
 
   return (
     <Shell>
@@ -402,7 +535,7 @@ function ConnectedSheet({
             </div>
 
             <div className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-200">
-              ON
+              {connectionState === 'live' ? 'LIVE' : connectionState === 'connecting' ? '...' : 'HTTP'}
             </div>
           </div>
 
@@ -489,9 +622,11 @@ function ConnectedSheet({
                   {section.fields.map(field => (
                     <FieldRow
                       actor={actor}
+                      canEdit={permissions.patch_actor}
                       canRoll={permissions.roll && Boolean(field.roll_formula)}
                       field={field}
-                      key={field.id}
+                      key={`${field.id}:${String(valueFor(actor, field))}`}
+                      onPatchField={value => onPatchField(field, value)}
                       onRollField={() => onRollField(field)}
                       pending={isBusy}
                     />
@@ -500,6 +635,54 @@ function ConnectedSheet({
               </section>
             ))}
           </div>
+
+          {permissions.chat && (
+            <section className="mt-4 rounded-xl border border-white/10 bg-white/[0.035] p-3">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-[10px] font-black uppercase tracking-[0.22em] text-[#7fb9ad]">Chat</h2>
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-600">
+                  {(session.messages || []).length} mensagens
+                </span>
+              </div>
+              <div className="max-h-72 overflow-y-auto rounded-lg border border-white/10 bg-black/25 p-2">
+                {(session.messages || []).slice(-30).map(message => (
+                  <article className="mb-2 rounded-lg border border-white/10 bg-[#15161b] p-2 last:mb-0" key={message.id}>
+                    <div className="flex items-center justify-between gap-2">
+                      <strong className="truncate text-xs text-[#f8ead0]">{message.speaker}</strong>
+                      <span className="shrink-0 text-[10px] text-zinc-600">
+                        {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    {message.type === 'roll' ? (
+                      <p className="mt-2 text-sm text-zinc-300">
+                        {message.text}: <span className="font-black text-[#d99a3d]">{message.result}</span>
+                      </p>
+                    ) : (
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">{message.text}</p>
+                    )}
+                  </article>
+                ))}
+                {(session.messages || []).length === 0 && (
+                  <p className="py-8 text-center text-sm text-zinc-600">Nenhuma mensagem ainda.</p>
+                )}
+              </div>
+              <form className="mt-3 grid gap-2" onSubmit={handleSendChat}>
+                <textarea
+                  className="min-h-20 resize-none rounded-lg border border-white/10 bg-black/35 p-3 text-sm text-zinc-100 outline-none focus:border-[#d99a3d]"
+                  onChange={event => setChatDraft(event.target.value)}
+                  placeholder="Enviar mensagem..."
+                  value={chatDraft}
+                />
+                <button
+                  className="min-h-11 rounded-lg bg-[#d99a3d] px-4 text-sm font-black text-black disabled:cursor-wait disabled:opacity-45"
+                  disabled={isBusy || !chatDraft.trim()}
+                  type="submit"
+                >
+                  Enviar
+                </button>
+              </form>
+            </section>
+          )}
         </main>
       </div>
     </Shell>
@@ -508,19 +691,37 @@ function ConnectedSheet({
 
 function FieldRow({
   actor,
+  canEdit,
   canRoll,
   field,
+  onPatchField,
   onRollField,
   pending,
 }: {
   actor: ApiActor;
+  canEdit: boolean;
   canRoll: boolean;
   field: ApiSystemField;
+  onPatchField: (value: string | number | boolean) => void;
   onRollField: () => void;
   pending: boolean;
 }) {
   const isStatus = statusFieldIds.includes(field.id);
   const value = fieldDisplayValue(actor, field);
+  const rawValue = valueFor(actor, field);
+  const [draft, setDraft] = useState<string | boolean>(field.type === 'checkbox' ? Boolean(rawValue) : String(rawValue ?? ''));
+
+  function handleSave() {
+    if (field.type === 'number') {
+      onPatchField(Number(draft));
+      return;
+    }
+    if (field.type === 'checkbox') {
+      onPatchField(Boolean(draft));
+      return;
+    }
+    onPatchField(String(draft));
+  }
 
   return (
     <article className={isStatus ? 'rounded-lg border border-[#d99a3d]/18 bg-[#d99a3d]/[0.08] p-3' : 'rounded-lg border border-white/10 bg-black/24 p-3'}>
@@ -544,9 +745,46 @@ function FieldRow({
           </span>
         )}
       </div>
-      <p className={field.type === 'textarea' ? 'mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-300' : 'mt-3 text-xl font-black text-[#f8ead0]'}>
-        {value}
-      </p>
+      {canEdit ? (
+        <div className="mt-3 grid gap-2">
+          {field.type === 'textarea' ? (
+            <textarea
+              className="min-h-24 resize-none rounded-lg border border-white/10 bg-black/35 p-3 text-sm text-zinc-100 outline-none focus:border-[#d99a3d]"
+              onChange={event => setDraft(event.target.value)}
+              value={String(draft)}
+            />
+          ) : field.type === 'checkbox' ? (
+            <label className="flex min-h-11 items-center gap-3 rounded-lg border border-white/10 bg-black/30 px-3 text-sm font-bold text-zinc-200">
+              <input
+                checked={Boolean(draft)}
+                className="h-4 w-4 accent-[#d99a3d]"
+                onChange={event => setDraft(event.target.checked)}
+                type="checkbox"
+              />
+              {draft ? 'Ativo' : 'Inativo'}
+            </label>
+          ) : (
+            <input
+              className="min-h-11 rounded-lg border border-white/10 bg-black/35 px-3 text-sm text-zinc-100 outline-none focus:border-[#d99a3d]"
+              onChange={event => setDraft(event.target.value)}
+              type={field.type === 'number' ? 'number' : 'text'}
+              value={String(draft)}
+            />
+          )}
+          <button
+            className="min-h-10 rounded-lg border border-[#d99a3d]/35 bg-[#d99a3d]/[0.12] px-3 text-xs font-black uppercase tracking-[0.12em] text-[#f8d99b] disabled:cursor-wait disabled:opacity-45"
+            disabled={pending}
+            onClick={handleSave}
+            type="button"
+          >
+            Salvar campo
+          </button>
+        </div>
+      ) : (
+        <p className={field.type === 'textarea' ? 'mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-300' : 'mt-3 text-xl font-black text-[#f8ead0]'}>
+          {value}
+        </p>
+      )}
       {canRoll && field.roll_formula && (
         <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#d99a3d]/75">{field.roll_formula}</p>
       )}

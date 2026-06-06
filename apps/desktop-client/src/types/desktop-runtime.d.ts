@@ -13,6 +13,7 @@ interface Window {
         actorId: string,
         payload?: import('../services/vttApi').CreateCompanionSessionPayload
       ) => Promise<import('../services/vttApi').ApiCompanionSessionLink>
+      broadcastEvent: (event: import('../services/vttApi').ApiCompanionEvent) => Promise<{ ok: boolean }>
       onEvent: (callback: (event: import('../services/vttApi').ApiCompanionEvent) => void) => () => void
     }
     storage?: {
