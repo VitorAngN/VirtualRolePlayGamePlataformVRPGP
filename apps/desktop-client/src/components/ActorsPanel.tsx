@@ -1,27 +1,71 @@
-import { useMemo, useState, type FormEvent } from 'react'
-import type { ApiActor, CreateActorPayload } from '../services/vttApi'
+import { useMemo } from 'react'
+import type {
+  ApiActor,
+  ApiGameSystem,
+  ApiSystemActorType,
+} from '../services/vttApi'
 import styles from './ActorsPanel.module.css'
+
+type ActorData = Record<string, string | number | boolean>
 
 interface ActorsPanelProps {
   isOpen: boolean
   isExiting?: boolean
   actors: ApiActor[]
-  onCreateActor: (payload: CreateActorPayload) => Promise<ApiActor>
+  system: ApiGameSystem | null
+  onRequestCreateActor: () => void
+  onOpenActor: (actorId: string) => void
+  onCreateMobileSession: (actor: ApiActor) => void
+}
+
+const FALLBACK_ACTOR_TYPE: ApiSystemActorType = {
+  id: 'personagem',
+  label: 'Personagem',
+  fields: [
+    { id: 'notes', label: 'Notas', type: 'textarea', section: 'Notas', default_value: '' },
+  ],
+}
+
+function defaultDataFor(actorType: ApiSystemActorType): ActorData {
+  return actorType.fields.reduce<ActorData>((data, field) => {
+    data[field.id] = field.default_value
+    return data
+  }, {})
+}
+
+function actorDataFor(actor: ApiActor, actorType: ApiSystemActorType): ActorData {
+  return {
+    ...defaultDataFor(actorType),
+    level: actor.level ?? 1,
+    hp: actor.hp ?? 10,
+    max_hp: actor.max_hp ?? 10,
+    ac: actor.ac ?? 10,
+    ancestry: actor.ancestry ?? '',
+    class_name: actor.class_name ?? '',
+    notes: actor.notes ?? '',
+    ...(actor.data || {}),
+  }
+}
+
+function actorTypeLabel(actorTypes: ApiSystemActorType[], typeId: string) {
+  return actorTypes.find(type => type.id === typeId)?.label || typeId
 }
 
 export default function ActorsPanel({
   isOpen,
   isExiting,
   actors,
-  onCreateActor,
+  system,
+  onRequestCreateActor,
+  onOpenActor,
+  onCreateMobileSession,
 }: ActorsPanelProps) {
+  const actorTypes = system?.actor_types?.length ? system.actor_types : [FALLBACK_ACTOR_TYPE]
+
   const orderedActors = useMemo(
     () => [...actors].sort((a, b) => a.name.localeCompare(b.name)),
     [actors],
   )
-  const [name, setName] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const panelClass = [
     styles.panel,
@@ -29,76 +73,65 @@ export default function ActorsPanel({
     isExiting ? styles.panelExiting : '',
   ].join(' ')
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const actorName = name.trim()
-
-    if (!actorName) {
-      setError('Informe o nome do personagem.')
-      return
-    }
-
-    const payload: CreateActorPayload = {
-      name: actorName,
-      type: 'personagem',
-    }
-
-    setIsSaving(true)
-    setError(null)
-    try {
-      await onCreateActor(payload)
-      setName('')
-    } catch {
-      setError('Nao consegui criar esse personagem agora.')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
   return (
     <aside id="actors-panel" className={panelClass} aria-hidden={!isOpen}>
       <div className={styles.panelHeader}>
         <div>
-          <span className={styles.eyebrow}>Personagens</span>
-          <strong>Personagens do mundo</strong>
+          <span className={styles.eyebrow}>Atores</span>
+          <strong>{system?.name || 'Sistema do mundo'}</strong>
         </div>
         <span className={styles.counter}>{actors.length}</span>
       </div>
 
-      <form className={styles.createBox} onSubmit={handleSubmit}>
-        <span className={styles.sectionTitle}>Criar personagem</span>
-
-        <label className={styles.formRow}>
-          <span>Nome</span>
-          <input
-            name="name"
-            value={name}
-            onChange={event => setName(event.target.value)}
-            placeholder="Nome do personagem"
-          />
-        </label>
-
-        {error && <p className={styles.error}>{error}</p>}
-
-        <button className={styles.primaryBtn} type="submit" disabled={isSaving}>
-          {isSaving ? 'Criando...' : 'Criar personagem'}
+      <div className={styles.createBox}>
+        <span className={styles.sectionTitle}>Criar ficha</span>
+        <button className={styles.primaryBtn} type="button" onClick={onRequestCreateActor}>
+          Criar ficha
         </button>
-      </form>
+      </div>
 
       <div className={styles.actorList}>
         {orderedActors.length === 0 && (
           <div className={styles.emptyState}>
-            <strong>Nenhum personagem criado.</strong>
-            <span>Quando criar um personagem, ele aparece aqui.</span>
+            <strong>Nenhuma ficha criada.</strong>
+            <span>As fichas usam os campos definidos pelo sistema deste mundo.</span>
           </div>
         )}
 
-        {orderedActors.map(actor => (
-          <div key={actor.id} className={styles.actorCard}>
-            <span className={styles.actorInitial}>{actor.name.slice(0, 1).toUpperCase() || '?'}</span>
-            <strong>{actor.name}</strong>
-          </div>
-        ))}
+        {orderedActors.map(actor => {
+          const actorType = actorTypes.find(type => type.id === actor.type) ?? actorTypes[0]
+          const actorData = actorDataFor(actor, actorType)
+
+          return (
+            <article
+              key={actor.id}
+              className={styles.actorCard}
+            >
+              <button
+                className={styles.actorMain}
+                type="button"
+                onClick={() => onOpenActor(actor.id)}
+              >
+                <span className={styles.actorInitial}>{actor.name.slice(0, 1).toUpperCase() || '?'}</span>
+                <span className={styles.actorInfo}>
+                  <strong>{actor.name}</strong>
+                  <span>
+                    {actorTypeLabel(actorTypes, actor.type)}
+                    {actorData.hp !== undefined ? ` - PV ${actorData.hp}/${actorData.max_hp ?? '?'}` : ''}
+                    {actorData.ac !== undefined ? ` - CA ${actorData.ac}` : ''}
+                  </span>
+                </span>
+              </button>
+              <button
+                className={styles.actorActionBtn}
+                type="button"
+                onClick={() => onCreateMobileSession(actor)}
+              >
+                Celular
+              </button>
+            </article>
+          )
+        })}
       </div>
     </aside>
   )

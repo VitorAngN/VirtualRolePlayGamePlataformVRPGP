@@ -2,6 +2,7 @@ const desktopConfig = window.vttLite
 const queryApiBaseUrl = new URLSearchParams(window.location.search).get('apiBaseUrl')
 const API_BASE_URL = desktopConfig?.apiBaseUrl ?? queryApiBaseUrl ?? import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8080'
 const localStorageApi = desktopConfig?.storage
+const companionApi = desktopConfig?.companion
 
 export interface ApiWorld {
   id: string
@@ -18,12 +19,37 @@ export interface ApiWorld {
   safe_configuration?: boolean
 }
 
+export type SystemFieldType = 'text' | 'number' | 'textarea' | 'checkbox'
+
+export interface ApiSystemField {
+  id: string
+  label: string
+  type: SystemFieldType
+  section: string
+  default_value: string | number | boolean
+}
+
+export interface ApiSystemActorType {
+  id: string
+  label: string
+  fields: ApiSystemField[]
+}
+
 export interface ApiGameSystem {
   id: string
   name: string
   ruleset: string
   version: string
   description: string
+  package_path?: string
+  manifest_path?: string
+  actor_types: ApiSystemActorType[]
+  item_types?: unknown[]
+  primary_token_attribute?: string
+  grid?: {
+    distance: number
+    units: string
+  }
 }
 
 export interface CreateSystemPayload {
@@ -31,6 +57,13 @@ export interface CreateSystemPayload {
   ruleset?: string
   version?: string
   description?: string
+  actor_types?: ApiSystemActorType[]
+  item_types?: unknown[]
+  primary_token_attribute?: string
+  grid?: {
+    distance: number
+    units: string
+  }
 }
 
 export interface ApiScene {
@@ -120,18 +153,34 @@ export interface ActorAttributes {
 export interface ApiActor {
   id: string
   world_id: string
+  system_id?: string
   name: string
   type: string
-  level: number
-  ancestry: string
-  class_name: string
-  hp: number
-  max_hp: number
-  ac: number
-  attributes: ActorAttributes
-  notes: string
+  data?: Record<string, string | number | boolean>
+  level?: number
+  ancestry?: string
+  class_name?: string
+  hp?: number
+  max_hp?: number
+  ac?: number
+  attributes?: ActorAttributes
+  notes?: string
   portrait_asset_id?: string
 }
+
+export type ApiCompanionEvent =
+  | {
+      type: 'actor.updated'
+      world_id: string
+      actor_id: string
+      actor: ApiActor
+    }
+  | {
+      type: 'chat.message.created'
+      world_id: string
+      actor_id: string
+      message: ApiChatMessage
+    }
 
 export interface ApiAsset {
   id: string
@@ -147,12 +196,29 @@ export interface ApiAsset {
 
 export interface ApiWorldSnapshot {
   world: ApiWorld
+  system?: ApiGameSystem | null
   scenes: ApiScene[]
   scene_folders: ApiSceneFolder[]
   assets: ApiAsset[]
   actors: ApiActor[]
   messages: ApiChatMessage[]
   tokens_by_scene: Record<string, ApiToken[]>
+}
+
+export interface ApiCompanionStatus {
+  running: boolean
+  port: number | null
+  urls: string[]
+}
+
+export interface ApiCompanionSessionLink {
+  token: string
+  actor_id: string
+  actor_name: string
+  world_id: string
+  world_name: string
+  loopback_url: string
+  urls: string[]
 }
 
 export interface UploadAssetPayload {
@@ -177,6 +243,7 @@ export interface CreateTokenPayload {
 export interface CreateActorPayload {
   name: string
   type?: string
+  data?: Record<string, string | number | boolean>
   level?: number
   ancestry?: string
   class_name?: string
@@ -204,12 +271,52 @@ export async function createSystem(payload: CreateSystemPayload) {
   throw new Error('Sistemas locais exigem o modo programa.')
 }
 
+export async function patchSystem(systemId: string, payload: Partial<CreateSystemPayload>) {
+  if (localStorageApi) {
+    return localStorageApi.patchSystem(systemId, payload)
+  }
+
+  throw new Error('Sistemas locais exigem o modo programa.')
+}
+
 export async function deleteSystem(systemId: string) {
   if (localStorageApi) {
     return localStorageApi.deleteSystem(systemId)
   }
 
   throw new Error('Sistemas locais exigem o modo programa.')
+}
+
+export async function openSystemFolder(systemId: string) {
+  if (localStorageApi?.openSystemFolder) {
+    return localStorageApi.openSystemFolder(systemId)
+  }
+
+  throw new Error('Abrir pasta de sistema exige o modo programa.')
+}
+
+export async function getCompanionStatus() {
+  if (companionApi) {
+    return companionApi.getStatus()
+  }
+
+  throw new Error('Companion mobile exige o modo programa.')
+}
+
+export async function createCompanionSession(worldId: string, actorId: string) {
+  if (companionApi) {
+    return companionApi.createSession(worldId, actorId)
+  }
+
+  throw new Error('Companion mobile exige o modo programa.')
+}
+
+export function onCompanionEvent(callback: (event: ApiCompanionEvent) => void) {
+  if (companionApi?.onEvent) {
+    return companionApi.onEvent(callback)
+  }
+
+  return () => undefined
 }
 
 export async function getWorlds() {

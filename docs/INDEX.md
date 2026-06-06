@@ -13,6 +13,7 @@ Este indice organiza os documentos tecnicos do VTT Lite para continuidade do des
 - [Arquitetura geral](../ARCHITECTURE.md): visao tecnica local-first.
 - [Estrutura funcional](APP_STRUCTURE.md): como o app deve iniciar limpo e salvar dados reais do usuario.
 - [Modelo de dados](DATA_MODEL.md): entidades principais do produto.
+- [Sistemas e conectividade](SYSTEMS_AND_CONNECTIVITY.md): pacotes de sistema, fichas programaveis e conexao desktop/mobile.
 - [Storage de assets](ASSET_STORAGE.md): mapas, tokens e retratos no save local.
 - [Plano de producao](PRODUCTION_PLAN.md): caminho para virar programa local utilizavel.
 - [Backend 0.1](BACKEND_0_1.md): API REST inicial mantida como camada opcional/futura.

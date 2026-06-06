@@ -47,6 +47,256 @@ function normalizeAssetKind(kind) {
   return ['map', 'token', 'portrait'].includes(kind) ? kind : 'map'
 }
 
+const SYSTEM_FIELD_TYPES = new Set(['text', 'number', 'textarea', 'checkbox'])
+const SYSTEM_ID_PATTERN = /^[a-z0-9_]+$/
+
+function fieldId(value, fallback = 'campo') {
+  return String(value || fallback)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 36) || fallback
+}
+
+function normalizeDefaultValue(type, value) {
+  if (type === 'number') return asNumber(value, 0)
+  if (type === 'checkbox') {
+    if (typeof value === 'string') {
+      return ['1', 'true', 'sim', 'yes', 'on'].includes(value.trim().toLowerCase())
+    }
+    return Boolean(value)
+  }
+  return String(value ?? '')
+}
+
+function normalizeSystemField(field, index = 0) {
+  const type = SYSTEM_FIELD_TYPES.has(field?.type) ? field.type : 'text'
+  const label = String(field?.label || field?.name || `Campo ${index + 1}`).trim() || `Campo ${index + 1}`
+  const id = fieldId(field?.id || label, `campo_${index + 1}`)
+
+  return {
+    id,
+    label,
+    type,
+    section: String(field?.section || 'Basico').trim() || 'Basico',
+    default_value: normalizeDefaultValue(type, field?.default_value ?? field?.defaultValue),
+  }
+}
+
+function defaultActorFields() {
+  return [
+    { id: 'level', label: 'Nivel', type: 'number', section: 'Identidade', default_value: 1 },
+    { id: 'class_name', label: 'Classe', type: 'text', section: 'Identidade', default_value: '' },
+    { id: 'ancestry', label: 'Ancestralidade', type: 'text', section: 'Identidade', default_value: '' },
+    { id: 'background', label: 'Antecedente', type: 'text', section: 'Identidade', default_value: '' },
+    { id: 'proficiency_bonus', label: 'Bonus de proficiencia', type: 'number', section: 'Identidade', default_value: 2 },
+    { id: 'hp', label: 'PV atual', type: 'number', section: 'Combate', default_value: 10 },
+    { id: 'max_hp', label: 'PV maximo', type: 'number', section: 'Combate', default_value: 10 },
+    { id: 'temp_hp', label: 'PV temporario', type: 'number', section: 'Combate', default_value: 0 },
+    { id: 'ac', label: 'CA', type: 'number', section: 'Combate', default_value: 10 },
+    { id: 'speed', label: 'Deslocamento', type: 'number', section: 'Combate', default_value: 9 },
+    { id: 'str', label: 'Forca', type: 'number', section: 'Atributos', default_value: 10 },
+    { id: 'dex', label: 'Destreza', type: 'number', section: 'Atributos', default_value: 10 },
+    { id: 'con', label: 'Constituicao', type: 'number', section: 'Atributos', default_value: 10 },
+    { id: 'int', label: 'Inteligencia', type: 'number', section: 'Atributos', default_value: 10 },
+    { id: 'wis', label: 'Sabedoria', type: 'number', section: 'Atributos', default_value: 10 },
+    { id: 'cha', label: 'Carisma', type: 'number', section: 'Atributos', default_value: 10 },
+    { id: 'save_str_prof', label: 'Prof. teste Forca', type: 'checkbox', section: 'Salvaguardas', default_value: false },
+    { id: 'save_dex_prof', label: 'Prof. teste Destreza', type: 'checkbox', section: 'Salvaguardas', default_value: false },
+    { id: 'save_con_prof', label: 'Prof. teste Constituicao', type: 'checkbox', section: 'Salvaguardas', default_value: false },
+    { id: 'save_int_prof', label: 'Prof. teste Inteligencia', type: 'checkbox', section: 'Salvaguardas', default_value: false },
+    { id: 'save_wis_prof', label: 'Prof. teste Sabedoria', type: 'checkbox', section: 'Salvaguardas', default_value: false },
+    { id: 'save_cha_prof', label: 'Prof. teste Carisma', type: 'checkbox', section: 'Salvaguardas', default_value: false },
+    { id: 'skill_acrobatics_prof', label: 'Prof. Acrobacia', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_animal_handling_prof', label: 'Prof. Adestrar Animais', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_arcana_prof', label: 'Prof. Arcanismo', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_athletics_prof', label: 'Prof. Atletismo', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_deception_prof', label: 'Prof. Enganacao', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_history_prof', label: 'Prof. Historia', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_insight_prof', label: 'Prof. Intuicao', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_intimidation_prof', label: 'Prof. Intimidacao', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_investigation_prof', label: 'Prof. Investigacao', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_medicine_prof', label: 'Prof. Medicina', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_nature_prof', label: 'Prof. Natureza', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_perception_prof', label: 'Prof. Percepcao', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_performance_prof', label: 'Prof. Performance', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_persuasion_prof', label: 'Prof. Persuasao', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_religion_prof', label: 'Prof. Religiao', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_sleight_of_hand_prof', label: 'Prof. Prestidigitacao', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_stealth_prof', label: 'Prof. Furtividade', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'skill_survival_prof', label: 'Prof. Sobrevivencia', type: 'checkbox', section: 'Pericias', default_value: false },
+    { id: 'senses', label: 'Sentidos', type: 'text', section: 'Traits', default_value: '' },
+    { id: 'languages', label: 'Idiomas', type: 'text', section: 'Traits', default_value: '' },
+    { id: 'resistances', label: 'Resistencias', type: 'text', section: 'Traits', default_value: '' },
+    { id: 'notes', label: 'Notas', type: 'textarea', section: 'Notas', default_value: '' },
+  ]
+}
+
+function normalizeActorType(actorType, index = 0) {
+  const label = String(actorType?.label || actorType?.name || 'Personagem').trim() || 'Personagem'
+  const id = fieldId(actorType?.id || label, index === 0 ? 'personagem' : `ator_${index + 1}`)
+  const fields = Array.isArray(actorType?.fields)
+    ? actorType.fields.map(normalizeSystemField)
+    : []
+
+  return {
+    id,
+    label,
+    fields: fields.length > 0 ? fields : defaultActorFields(),
+  }
+}
+
+function normalizeActorTypes(actorTypes) {
+  const normalized = Array.isArray(actorTypes)
+    ? actorTypes.map(normalizeActorType).filter(actorType => actorType.id)
+    : []
+
+  return normalized.length > 0 ? normalized : [normalizeActorType({ id: 'personagem', label: 'Personagem' })]
+}
+
+function normalizeSystem(system) {
+  const timestamp = now()
+  const normalized = {
+    id: String(system?.id || newId('system')),
+    name: String(system?.name || '').trim(),
+    ruleset: String(system?.ruleset || ''),
+    version: String(system?.version || '0.1'),
+    description: String(system?.description || ''),
+    actor_types: normalizeActorTypes(system?.actor_types || system?.actorTypes),
+    item_types: Array.isArray(system?.item_types) ? system.item_types : [],
+    primary_token_attribute: String(system?.primary_token_attribute || 'hp'),
+    grid: {
+      distance: asNumber(system?.grid?.distance, 5),
+      units: String(system?.grid?.units || 'ft'),
+    },
+    package_path: String(system?.package_path || system?.packagePath || ''),
+    manifest_path: String(system?.manifest_path || system?.manifestPath || ''),
+    created_at: String(system?.created_at || timestamp),
+    updated_at: String(system?.updated_at || timestamp),
+  }
+
+  validateSystemManifest(normalized)
+  return normalized
+}
+
+function duplicateValues(values) {
+  const seen = new Set()
+  const duplicated = new Set()
+
+  for (const value of values) {
+    if (seen.has(value)) duplicated.add(value)
+    seen.add(value)
+  }
+
+  return Array.from(duplicated)
+}
+
+function validateSystemManifest(system) {
+  const errors = []
+
+  if (!system.name) errors.push('Nome do sistema e obrigatorio.')
+  if (!Array.isArray(system.actor_types) || system.actor_types.length === 0) {
+    errors.push('O sistema precisa ter pelo menos um tipo de ator.')
+  }
+
+  const duplicatedActorTypes = duplicateValues((system.actor_types || []).map(actorType => actorType.id))
+  for (const actorTypeId of duplicatedActorTypes) {
+    errors.push(`Tipo de ator duplicado: "${actorTypeId}".`)
+  }
+
+  for (const actorType of system.actor_types || []) {
+    if (!actorType.id || !SYSTEM_ID_PATTERN.test(actorType.id)) {
+      errors.push(`ID invalido no tipo de ator "${actorType.label || actorType.id}". Use apenas letras, numeros e underscore.`)
+    }
+
+    if (!actorType.label) {
+      errors.push(`Tipo de ator "${actorType.id}" precisa ter um rotulo.`)
+    }
+
+    if (!Array.isArray(actorType.fields) || actorType.fields.length === 0) {
+      errors.push(`Tipo de ator "${actorType.label || actorType.id}" precisa ter pelo menos um campo.`)
+      continue
+    }
+
+    const duplicatedFields = duplicateValues(actorType.fields.map(field => field.id))
+    for (const fieldId of duplicatedFields) {
+      errors.push(`Campo duplicado em "${actorType.label}": "${fieldId}".`)
+    }
+
+    for (const field of actorType.fields) {
+      if (!field.id || !SYSTEM_ID_PATTERN.test(field.id)) {
+        errors.push(`ID invalido no campo "${field.label || field.id}" de "${actorType.label}".`)
+      }
+
+      if (!field.label) {
+        errors.push(`Campo "${field.id}" de "${actorType.label}" precisa ter um rotulo.`)
+      }
+
+      if (!SYSTEM_FIELD_TYPES.has(field.type)) {
+        errors.push(`Campo "${field.label || field.id}" usa tipo invalido: "${field.type}".`)
+      }
+    }
+  }
+
+  if (!Number.isFinite(Number(system.grid?.distance)) || Number(system.grid.distance) <= 0) {
+    errors.push('Distancia do grid precisa ser maior que zero.')
+  }
+
+  if (!String(system.grid?.units || '').trim()) {
+    errors.push('Unidade do grid e obrigatoria.')
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Manifesto do sistema invalido:\n- ${errors.join('\n- ')}`)
+  }
+}
+
+function buildActorData(actorType, payloadData = {}) {
+  const data = {}
+  for (const field of actorType.fields) {
+    data[field.id] = normalizeDefaultValue(field.type, payloadData[field.id] ?? field.default_value)
+  }
+  return data
+}
+
+function actorDataFromPayload(payload = {}, base = {}) {
+  const data = { ...base, ...(payload.data || {}) }
+  const mappings = [
+    ['level', 'level'],
+    ['hp', 'hp'],
+    ['max_hp', 'max_hp'],
+    ['maxHp', 'max_hp'],
+    ['ac', 'ac'],
+    ['ancestry', 'ancestry'],
+    ['class_name', 'class_name'],
+    ['className', 'class_name'],
+    ['notes', 'notes'],
+  ]
+
+  for (const [source, target] of mappings) {
+    if (Object.prototype.hasOwnProperty.call(payload, source) && payload[source] !== undefined) {
+      data[target] = payload[source]
+    }
+  }
+
+  return data
+}
+
+function legacyActorData(actor) {
+  return {
+    level: actor?.level ?? 1,
+    hp: actor?.hp ?? 10,
+    max_hp: actor?.max_hp ?? 10,
+    ac: actor?.ac ?? 10,
+    ancestry: actor?.ancestry ?? '',
+    class_name: actor?.class_name ?? '',
+    notes: actor?.notes ?? '',
+    ...(actor?.data || {}),
+  }
+}
+
 function safeJoin(root, ...parts) {
   const target = path.resolve(root, ...parts)
   const normalizedRoot = path.resolve(root)
@@ -79,20 +329,47 @@ function createLocalStore(savesDir) {
   const root = path.resolve(savesDir)
   const indexPath = path.join(root, 'index.json')
   const worldsDir = path.join(root, 'worlds')
+  const systemsDir = path.join(root, 'systems')
 
   async function ensureRoot() {
     await fs.mkdir(worldsDir, { recursive: true })
+    await fs.mkdir(systemsDir, { recursive: true })
     const index = await readJSON(indexPath, null)
     if (!index) {
       await writeJSON(indexPath, { worlds: [], systems: [] })
       return
     }
 
-    if (!Array.isArray(index.worlds) || !Array.isArray(index.systems)) {
+    let shouldRewrite = !Array.isArray(index.worlds) || !Array.isArray(index.systems)
+    const nextIndex = {
+      ...index,
+      worlds: Array.isArray(index.worlds) ? index.worlds : [],
+      systems: Array.isArray(index.systems) ? index.systems : [],
+    }
+
+    const nextSystems = []
+    for (const system of nextIndex.systems) {
+      if (!system?.id) {
+        shouldRewrite = true
+        continue
+      }
+
+      const hasInlineManifest = Array.isArray(system.actor_types) || Array.isArray(system.actorTypes)
+      const manifestExists = await systemPackageExists(system.id)
+      if (hasInlineManifest || !manifestExists) {
+        const migratedSystem = await writeSystemPackage(system)
+        nextSystems.push(summarizeSystem(migratedSystem))
+        shouldRewrite = true
+        continue
+      }
+
+      nextSystems.push(summarizeSystem(system))
+    }
+
+    if (shouldRewrite) {
       await writeJSON(indexPath, {
-        ...index,
-        worlds: Array.isArray(index.worlds) ? index.worlds : [],
-        systems: Array.isArray(index.systems) ? index.systems : [],
+        ...nextIndex,
+        systems: nextSystems,
       })
     }
   }
@@ -101,21 +378,92 @@ function createLocalStore(savesDir) {
     return safeJoin(worldsDir, worldId)
   }
 
+  function systemDir(systemId) {
+    return safeJoin(systemsDir, systemId)
+  }
+
+  function systemFile(systemId) {
+    return path.join(systemDir(systemId), 'system.json')
+  }
+
   function worldFile(worldId) {
     return path.join(worldDir(worldId), 'world.json')
+  }
+
+  function systemWithPaths(system) {
+    return {
+      ...system,
+      package_path: `systems/${system.id}`,
+      manifest_path: `systems/${system.id}/system.json`,
+    }
+  }
+
+  function summarizeSystem(system) {
+    return systemWithPaths({
+      id: system.id,
+      name: system.name,
+      ruleset: system.ruleset || '',
+      version: system.version || '0.1',
+      description: system.description || '',
+      created_at: system.created_at || now(),
+      updated_at: system.updated_at || now(),
+    })
+  }
+
+  async function systemPackageExists(systemId) {
+    try {
+      await fs.access(systemFile(systemId))
+      return true
+    } catch (error) {
+      if (error.code === 'ENOENT') return false
+      throw error
+    }
+  }
+
+  async function readSystemPackage(system) {
+    const manifest = await readJSON(systemFile(system.id), null)
+    if (!manifest) {
+      if (Array.isArray(system.actor_types) || Array.isArray(system.actorTypes)) {
+        return writeSystemPackage(system)
+      }
+      throw new Error(`Manifesto do sistema "${system.name || system.id}" nao encontrado.`)
+    }
+
+    return systemWithPaths(normalizeSystem({
+      ...manifest,
+      id: system.id,
+      created_at: manifest.created_at || system.created_at,
+      updated_at: manifest.updated_at || system.updated_at,
+    }))
+  }
+
+  async function writeSystemPackage(system) {
+    const normalized = normalizeSystem(system)
+    const withPaths = systemWithPaths(normalized)
+    await writeJSON(systemFile(withPaths.id), withPaths)
+    return withPaths
   }
 
   async function readIndex() {
     await ensureRoot()
     const index = await readJSON(indexPath, { worlds: [], systems: [] })
+    const systems = []
+    for (const system of Array.isArray(index.systems) ? index.systems : []) {
+      systems.push(await readSystemPackage(system))
+    }
+
     return {
       worlds: Array.isArray(index.worlds) ? index.worlds : [],
-      systems: Array.isArray(index.systems) ? index.systems : [],
+      systems,
     }
   }
 
   async function writeIndex(index) {
-    await writeJSON(indexPath, index)
+    await writeJSON(indexPath, {
+      ...index,
+      worlds: Array.isArray(index.worlds) ? index.worlds : [],
+      systems: Array.isArray(index.systems) ? index.systems.map(summarizeSystem) : [],
+    })
   }
 
   async function readWorld(worldId) {
@@ -127,6 +475,13 @@ function createLocalStore(savesDir) {
     data.tokens ??= []
     data.messages ??= []
     data.actors ??= []
+    const index = await readIndex()
+    const linkedSystem = index.systems.find(system => system.id === data.world?.system_id)
+    if (linkedSystem) {
+      data.system = linkedSystem
+    } else if (data.system) {
+      data.system = normalizeSystem(data.system)
+    }
     return data
   }
 
@@ -150,6 +505,7 @@ function createLocalStore(savesDir) {
   }
 
   function toSnapshot(data) {
+    const worldSystem = data.system || null
     const tokensByScene = {}
     for (const scene of data.scenes) {
       tokensByScene[scene.id] = []
@@ -160,6 +516,7 @@ function createLocalStore(savesDir) {
     }
     return {
       world: data.world,
+      system: worldSystem,
       scenes: data.scenes,
       scene_folders: data.scene_folders,
       assets: data.assets,
@@ -182,16 +539,19 @@ function createLocalStore(savesDir) {
   async function createSystem(payload) {
     const index = await readIndex()
     const timestamp = now()
-    const system = {
+    const system = await writeSystemPackage({
       id: newId('system'),
       name: String(payload?.name || '').trim(),
       ruleset: String(payload?.ruleset || ''),
-      version: String(payload?.version || ''),
+      version: String(payload?.version || '0.1'),
       description: String(payload?.description || ''),
+      actor_types: payload?.actor_types || payload?.actorTypes,
+      item_types: payload?.item_types || payload?.itemTypes,
+      primary_token_attribute: payload?.primary_token_attribute || payload?.primaryTokenAttribute,
+      grid: payload?.grid,
       created_at: timestamp,
       updated_at: timestamp,
-    }
-    if (!system.name) throw new Error('Nome do sistema e obrigatorio.')
+    })
 
     index.systems = index.systems.filter(item => item.id !== system.id)
     index.systems.push(system)
@@ -199,15 +559,59 @@ function createLocalStore(savesDir) {
     return system
   }
 
+  async function patchSystem(systemId, patch) {
+    const index = await readIndex()
+    const current = index.systems.find(system => system.id === systemId)
+    if (!current) throw new Error('Sistema nao encontrado.')
+
+    const nextSystem = await writeSystemPackage({
+      ...current,
+      ...patch,
+      id: current.id,
+      name: Object.prototype.hasOwnProperty.call(patch || {}, 'name') ? String(patch.name || '').trim() : current.name,
+      actor_types: patch?.actor_types || patch?.actorTypes || current.actor_types,
+      item_types: patch?.item_types || patch?.itemTypes || current.item_types,
+      primary_token_attribute: patch?.primary_token_attribute || patch?.primaryTokenAttribute || current.primary_token_attribute,
+      grid: patch?.grid || current.grid,
+      updated_at: now(),
+    })
+
+    index.systems = index.systems.map(system => (system.id === systemId ? nextSystem : system))
+    await writeIndex(index)
+
+    for (const world of index.worlds) {
+      if (world.system_id !== systemId) continue
+      const data = await readWorld(world.id)
+      data.world.system = nextSystem.name
+      data.system = nextSystem
+      await writeWorld(data)
+    }
+
+    return nextSystem
+  }
+
   async function deleteSystem(systemId) {
     const index = await readIndex()
+    const usedByWorld = index.worlds.find(world => world.system_id === systemId)
+    if (usedByWorld) {
+      throw new Error(`Sistema em uso pelo mundo "${usedByWorld.name}". Troque o sistema do mundo antes de apagar.`)
+    }
+
     const nextSystems = index.systems.filter(system => system.id !== systemId)
     if (nextSystems.length === index.systems.length) {
       throw new Error('Sistema nao encontrado.')
     }
     index.systems = nextSystems
     await writeIndex(index)
+    await fs.rm(systemDir(systemId), { recursive: true, force: true })
     return { deleted_id: systemId }
+  }
+
+  async function getSystemPackagePath(systemId) {
+    const index = await readIndex()
+    const system = index.systems.find(item => item.id === systemId)
+    if (!system) throw new Error('Sistema nao encontrado.')
+    return systemDir(systemId)
   }
 
   async function createWorld(payload) {
@@ -244,6 +648,7 @@ function createLocalStore(savesDir) {
 
     const data = {
       world,
+      system: selectedSystem,
       scenes: [],
       scene_folders: [],
       assets: [],
@@ -305,6 +710,7 @@ function createLocalStore(savesDir) {
       if (!selectedSystem) throw new Error('Sistema selecionado nao encontrado.')
       nextWorld.system_id = selectedSystem.id
       nextWorld.system = selectedSystem.name
+      data.system = selectedSystem
     }
 
     data.world = nextWorld
@@ -600,34 +1006,27 @@ function createLocalStore(savesDir) {
     return { deleted_id: tokenId }
   }
 
-  function normalizeActorAttributes(attributes = {}) {
-    return {
-      str: asNumber(attributes.str, 10),
-      dex: asNumber(attributes.dex, 10),
-      con: asNumber(attributes.con, 10),
-      int: asNumber(attributes.int, 10),
-      wis: asNumber(attributes.wis, 10),
-      cha: asNumber(attributes.cha, 10),
-    }
-  }
-
   async function createActor(worldId, payload) {
     const data = await readWorld(worldId)
     const timestamp = now()
-    const maxHp = asNumber(payload?.max_hp ?? payload?.maxHp, 10)
+    const system = normalizeSystem(data.system || { name: data.world?.system || 'Sistema local' })
+    const actorType = system.actor_types.find(type => type.id === payload?.type) ?? system.actor_types[0]
+    const actorData = buildActorData(actorType, actorDataFromPayload(payload))
+
     const actor = {
       id: newId('actor'),
       world_id: worldId,
+      system_id: system.id,
       name: String(payload?.name || 'Nova ficha').trim() || 'Nova ficha',
-      type: String(payload?.type || 'personagem'),
-      level: asNumber(payload?.level, 1),
-      ancestry: String(payload?.ancestry || ''),
-      class_name: String(payload?.class_name || payload?.className || ''),
-      hp: asNumber(payload?.hp, maxHp),
-      max_hp: maxHp,
-      ac: asNumber(payload?.ac, 10),
-      attributes: normalizeActorAttributes(payload?.attributes),
-      notes: String(payload?.notes || ''),
+      type: actorType.id,
+      data: actorData,
+      level: asNumber(actorData.level, 1),
+      ancestry: String(actorData.ancestry || ''),
+      class_name: String(actorData.class_name || ''),
+      hp: asNumber(actorData.hp, 10),
+      max_hp: asNumber(actorData.max_hp, 10),
+      ac: asNumber(actorData.ac, 10),
+      notes: String(actorData.notes || ''),
       portrait_asset_id: String(payload?.portrait_asset_id || payload?.portraitAssetId || ''),
       created_at: timestamp,
       updated_at: timestamp,
@@ -641,23 +1040,25 @@ function createLocalStore(savesDir) {
   async function patchActor(actorId, patch) {
     const data = await findWorldByEntity(world => world.actors?.some(actor => actor.id === actorId))
     const timestamp = now()
+    const system = normalizeSystem(data.system || { name: data.world?.system || 'Sistema local' })
     data.actors = data.actors.map(actor => {
       if (actor.id !== actorId) return actor
+      const actorType = system.actor_types.find(type => type.id === (patch?.type ?? actor.type)) ?? system.actor_types[0]
+      const nextData = buildActorData(actorType, actorDataFromPayload(patch, legacyActorData(actor)))
+
       return {
         ...actor,
         name: patch?.name ?? actor.name,
-        type: patch?.type ?? actor.type,
-        level: patch?.level ?? actor.level,
-        ancestry: patch?.ancestry ?? actor.ancestry ?? '',
-        class_name: patch?.class_name ?? actor.class_name ?? '',
-        hp: patch?.hp ?? actor.hp,
-        max_hp: patch?.max_hp ?? actor.max_hp,
-        ac: patch?.ac ?? actor.ac,
-        attributes: {
-          ...normalizeActorAttributes(actor.attributes),
-          ...(patch?.attributes || {}),
-        },
-        notes: patch?.notes ?? actor.notes ?? '',
+        system_id: system.id,
+        type: actorType.id,
+        data: nextData,
+        level: asNumber(nextData.level, actor.level ?? 1),
+        ancestry: String(nextData.ancestry || ''),
+        class_name: String(nextData.class_name || ''),
+        hp: asNumber(nextData.hp, actor.hp ?? 10),
+        max_hp: asNumber(nextData.max_hp, actor.max_hp ?? 10),
+        ac: asNumber(nextData.ac, actor.ac ?? 10),
+        notes: String(nextData.notes || ''),
         portrait_asset_id: patch?.portrait_asset_id ?? actor.portrait_asset_id ?? '',
         updated_at: timestamp,
       }
@@ -743,6 +1144,7 @@ function createLocalStore(savesDir) {
     listWorlds,
     listSystems,
     createSystem,
+    patchSystem,
     deleteSystem,
     createWorld,
     patchWorld,
@@ -764,6 +1166,7 @@ function createLocalStore(savesDir) {
     deleteActor,
     uploadAsset,
     deleteAsset,
+    getSystemPackagePath,
     resolveAssetPath,
   }
 }

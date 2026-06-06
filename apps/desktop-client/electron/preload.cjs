@@ -3,10 +3,21 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('vttLite', {
   runtime: 'desktop',
   getConfig: () => ipcRenderer.invoke('store:getConfig'),
+  companion: {
+    getStatus: () => ipcRenderer.invoke('companion:getStatus'),
+    createSession: (worldId, actorId) => ipcRenderer.invoke('companion:createSession', worldId, actorId),
+    onEvent: callback => {
+      const handler = (_event, payload) => callback(payload)
+      ipcRenderer.on('companion:event', handler)
+      return () => ipcRenderer.removeListener('companion:event', handler)
+    },
+  },
   storage: {
     getSystems: () => ipcRenderer.invoke('store:getSystems'),
     createSystem: payload => ipcRenderer.invoke('store:createSystem', payload),
+    patchSystem: (systemId, patch) => ipcRenderer.invoke('store:patchSystem', systemId, patch),
     deleteSystem: systemId => ipcRenderer.invoke('store:deleteSystem', systemId),
+    openSystemFolder: systemId => ipcRenderer.invoke('store:openSystemFolder', systemId),
     getWorlds: () => ipcRenderer.invoke('store:getWorlds'),
     createWorld: payload => ipcRenderer.invoke('store:createWorld', payload),
     patchWorld: (worldId, patch) => ipcRenderer.invoke('store:patchWorld', worldId, patch),

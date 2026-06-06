@@ -15,6 +15,6 @@
     "dev:mobile": "npm run dev --workspace=mobile-companion",
     "dev:api": "cd server && go run ./cmd/api",
     "build:api": "cd server && go build -o bin/vtt-lite-api.exe ./cmd/api",
-    "build:program": "npm run build --workspace=desktop-client"
+    "build:program": "npm run build --workspace=mobile-companion && npm run build --workspace=desktop-client"
   }
 }

@@ -5,10 +5,13 @@ import ChatPanel, { ChatToggleButton } from './ChatPanel'
 import ScenesPanel, { ScenesToggleButton } from './ScenesPanel'
 import AssetsPanel, { AssetsToggleButton } from './AssetsPanel'
 import ActorsPanel from './ActorsPanel'
+import ActorCreateDialog from './ActorCreateDialog'
+import ActorSheetWindow from './ActorSheetWindow'
 import MacroBar, { type MacroAction } from './MacroBar'
 import type { Scene } from './scenes/types'
 import {
   createActor,
+  createCompanionSession,
   createMessage,
   createScene,
   createSceneFolder,
@@ -18,13 +21,17 @@ import {
   deleteSceneFolder,
   duplicateScene,
   getWorldSnapshot,
+  onCompanionEvent,
   patchScene,
+  patchActor,
   patchToken,
   resolveAssetUrl,
   uploadAsset,
   type ApiActor,
   type ApiAsset,
   type ApiChatMessage,
+  type ApiCompanionSessionLink,
+  type ApiGameSystem,
   type ApiScene,
   type ApiSceneFolder,
   type ApiToken,
@@ -87,6 +94,10 @@ interface MeasureState {
 }
 
 const INITIAL_TOKENS: Token[] = []
+
+function preferredCompanionUrl(link: ApiCompanionSessionLink) {
+  return link.urls.find(url => !url.includes('127.0.0.1') && !url.includes('localhost')) ?? link.loopback_url
+}
 
 function RightTabBtn({ icon, title, isOpen, onClick }: { icon: string; title: string; isOpen?: boolean; onClick: () => void }) {
   return (
@@ -265,6 +276,12 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
   const [draggingTokenId, setDraggingTokenId] = useState<string | null>(null)
   const [assets, setAssets] = useState<ApiAsset[]>([])
   const [actors, setActors] = useState<ApiActor[]>([])
+  const [system, setSystem] = useState<ApiGameSystem | null>(null)
+  const [openActorSheetId, setOpenActorSheetId] = useState<string | null>(null)
+  const [isActorCreateOpen, setIsActorCreateOpen] = useState(false)
+  const [companionLink, setCompanionLink] = useState<ApiCompanionSessionLink | null>(null)
+  const [companionError, setCompanionError] = useState('')
+  const [isCreatingCompanionLink, setIsCreatingCompanionLink] = useState(false)
   const [, setSaveStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [viewTransform, setViewTransform] = useState<ViewTransform>({ x: 0, y: 0, scale: 1 })
   const [isPanning, setIsPanning] = useState(false)
@@ -348,6 +365,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
         setSceneFolders(snapshot.scene_folders ?? [])
         setAssets(snapshot.assets)
         setActors(snapshot.actors ?? [])
+        setSystem(snapshot.system ?? null)
         setMessages(snapshot.messages ?? [])
         setActiveScene(nextScene)
         tokensRef.current = nextTokens
@@ -367,6 +385,25 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
       cancelled = true
     }
   }, [worldId])
+
+  useEffect(() => onCompanionEvent(event => {
+    if (event.world_id !== worldId) return
+
+    if (event.type === 'actor.updated') {
+      setActors(prev => {
+        const exists = prev.some(actor => actor.id === event.actor.id)
+        if (!exists) return [...prev, event.actor]
+        return prev.map(actor => (actor.id === event.actor.id ? event.actor : actor))
+      })
+    }
+
+    if (event.type === 'chat.message.created') {
+      setMessages(prev => {
+        if (prev.some(message => message.id === event.message.id)) return prev
+        return [...prev, event.message]
+      })
+    }
+  }), [worldId])
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -824,6 +861,30 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
     })
   }
 
+  async function handleActorSheetRoll(payload: { speaker: string; label: string; formula: string }) {
+    const result = rollFormula(payload.formula)
+    if (!result) {
+      await handleCreateChatMessage({
+        speaker: payload.speaker,
+        type: 'text',
+        text: `${payload.label}: ${payload.formula}`,
+        formula: '',
+        rolls: [],
+      })
+      return
+    }
+
+    await handleCreateChatMessage({
+      speaker: payload.speaker,
+      type: 'roll',
+      text: payload.label,
+      formula: payload.formula,
+      result: result.total,
+      rolls: result.rolls,
+    })
+    pushActivity(payload.label, `${payload.formula} = ${result.total} (${formatRoll(result)})`)
+  }
+
   function applySceneMap(asset: ApiAsset, scene: Scene) {
     setActiveScene(prev => (prev?.id === scene.id ? { ...prev, backgroundAssetId: asset.id } : prev))
     setScenes(prev => prev.map(item => (item.id === scene.id ? { ...item, backgroundAssetId: asset.id } : item)))
@@ -885,7 +946,37 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
   async function handleCreateActor(payload: CreateActorPayload) {
     const actor = await createActor(worldId, payload)
     setActors(prev => [...prev.filter(item => item.id !== actor.id), actor])
+    setOpenActorSheetId(actor.id)
     return actor
+  }
+
+  async function handlePatchActor(actorId: string, payload: Partial<ApiActor>) {
+    const actor = await patchActor(actorId, payload)
+    setActors(prev => prev.map(item => (item.id === actor.id ? actor : item)))
+    return actor
+  }
+
+  async function handleCreateCompanionLink(actor: ApiActor) {
+    setCompanionError('')
+    setCompanionLink(null)
+    setIsCreatingCompanionLink(true)
+
+    try {
+      const link = await createCompanionSession(worldId, actor.id)
+      setCompanionLink(link)
+      const preferredUrl = preferredCompanionUrl(link)
+      await navigator.clipboard?.writeText(preferredUrl).catch(() => undefined)
+    } catch (error) {
+      setCompanionError(error instanceof Error ? error.message : 'Falha ao criar sessao mobile.')
+    } finally {
+      setIsCreatingCompanionLink(false)
+    }
+  }
+
+  function handleCopyCompanionLinks() {
+    if (!companionLink) return
+    const text = companionLink.urls.join('\n')
+    void navigator.clipboard?.writeText(text)
   }
 
   async function handleUploadSceneMap(file: File, scene: Scene) {
@@ -1137,8 +1228,88 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
           isOpen={activePanel === 'actors'}
           isExiting={exitingPanel === 'actors'}
           actors={actors}
+          system={system}
+          onRequestCreateActor={() => setIsActorCreateOpen(true)}
+          onOpenActor={setOpenActorSheetId}
+          onCreateMobileSession={handleCreateCompanionLink}
+        />
+      )}
+
+      {isActorCreateOpen && (
+        <ActorCreateDialog
+          system={system}
+          onClose={() => setIsActorCreateOpen(false)}
           onCreateActor={handleCreateActor}
         />
+      )}
+
+      {openActorSheetId && actors.find(actor => actor.id === openActorSheetId) && (
+        <ActorSheetWindow
+          key={openActorSheetId}
+          actor={actors.find(actor => actor.id === openActorSheetId)!}
+          system={system}
+          onClose={() => setOpenActorSheetId(null)}
+          onSave={handlePatchActor}
+          onRoll={handleActorSheetRoll}
+        />
+      )}
+
+      {(companionLink || companionError || isCreatingCompanionLink) && (
+        <div className={styles.companionOverlay} data-map-ui="true">
+          <section className={styles.companionDialog} role="dialog" aria-modal="true" aria-label="Companion mobile">
+            <div className={styles.companionHeader}>
+              <div>
+                <span>Companion mobile</span>
+                <strong>{companionLink?.actor_name || 'Preparando ficha'}</strong>
+              </div>
+              <button type="button" onClick={() => {
+                setCompanionLink(null)
+                setCompanionError('')
+                setIsCreatingCompanionLink(false)
+              }}>
+                X
+              </button>
+            </div>
+
+            <div className={styles.companionBody}>
+              {isCreatingCompanionLink && <p className={styles.companionHint}>Subindo host local e criando token da ficha...</p>}
+
+              {companionError && (
+                <p className={styles.companionError}>{companionError}</p>
+              )}
+
+              {companionLink && (
+                <>
+                  <p className={styles.companionHint}>
+                    Abra um destes links no celular conectado na mesma rede. O primeiro link valido ja foi copiado se o sistema permitiu.
+                  </p>
+                  <div className={styles.companionLinks}>
+                    {companionLink.urls.map(url => (
+                      <a key={url} href={url} target="_blank" rel="noreferrer">
+                        {url}
+                      </a>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className={styles.companionFooter}>
+              {companionLink && (
+                <button type="button" className={styles.companionSecondary} onClick={handleCopyCompanionLinks}>
+                  Copiar links
+                </button>
+              )}
+              <button type="button" className={styles.companionPrimary} onClick={() => {
+                setCompanionLink(null)
+                setCompanionError('')
+                setIsCreatingCompanionLink(false)
+              }}>
+                Fechar
+              </button>
+            </div>
+          </section>
+        </div>
       )}
 
       <MacroBar onMacroRun={handleMacroRun} />

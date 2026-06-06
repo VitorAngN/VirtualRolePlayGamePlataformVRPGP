@@ -6,10 +6,17 @@ interface Window {
       savesDir: string
       runtime: 'desktop'
     }>
+    companion?: {
+      getStatus: () => Promise<import('../services/vttApi').ApiCompanionStatus>
+      createSession: (worldId: string, actorId: string) => Promise<import('../services/vttApi').ApiCompanionSessionLink>
+      onEvent: (callback: (event: import('../services/vttApi').ApiCompanionEvent) => void) => () => void
+    }
     storage?: {
       getSystems: () => Promise<import('../services/vttApi').ApiGameSystem[]>
       createSystem: (payload: import('../services/vttApi').CreateSystemPayload) => Promise<import('../services/vttApi').ApiGameSystem>
+      patchSystem: (systemId: string, patch: Partial<import('../services/vttApi').CreateSystemPayload>) => Promise<import('../services/vttApi').ApiGameSystem>
       deleteSystem: (systemId: string) => Promise<{ deleted_id: string }>
+      openSystemFolder: (systemId: string) => Promise<{ path: string }>
       getWorlds: () => Promise<import('../services/vttApi').ApiWorld[]>
       createWorld: (payload: import('../services/vttApi').CreateWorldPayload) => Promise<import('../services/vttApi').ApiWorld>
       patchWorld: (worldId: string, patch: Partial<import('../services/vttApi').ApiWorld>) => Promise<import('../services/vttApi').ApiWorld>

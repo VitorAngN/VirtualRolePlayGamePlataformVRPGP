@@ -8,7 +8,7 @@
     "dev": "vite",
     "dev:program": "node electron/dev.cjs",
     "program": "npm run build && electron electron/main.cjs",
-    "package:program": "npm run build && node electron/package-win.cjs",
+    "package:program": "npm run build --workspace=mobile-companion && npm run build && node electron/package-win.cjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"

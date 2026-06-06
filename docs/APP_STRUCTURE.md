@@ -66,6 +66,19 @@ saves/
 
 `index.json` lista os mundos e sistemas existentes. Cada `world.json` concentra metadados do mundo, cenas, assets, tokens e mensagens/eventos.
 
+Sistemas ficam em pacotes proprios:
+
+```text
+saves/
+  systems/
+    {systemId}/
+      system.json
+      assets/
+      templates/
+```
+
+O launcher permite abrir a pasta do pacote de sistema para inspecao e edicao manual do manifesto.
+
 ## Pastas principais
 
 - `apps/desktop-client`: cliente desktop React e shell Electron.

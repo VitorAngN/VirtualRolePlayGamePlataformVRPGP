@@ -88,7 +88,9 @@
   font-weight: 700;
 }
 
-.formRow input {
+.formRow input,
+.formRow select,
+.formRow textarea {
   width: 100%;
   min-height: 32px;
   background: #0d0d0d;
@@ -100,7 +102,20 @@
   padding: 6px 8px;
 }
 
-.formRow input:focus {
+.formRow textarea {
+  min-height: 68px;
+  resize: vertical;
+}
+
+.formRow input[type="checkbox"] {
+  width: 16px;
+  min-height: 16px;
+  accent-color: var(--accent);
+}
+
+.formRow input:focus,
+.formRow select:focus,
+.formRow textarea:focus {
   outline: none;
   border-color: rgba(230,145,56,0.5);
 }
@@ -116,7 +131,29 @@
   font-weight: 800;
 }
 
+.secondaryBtn {
+  min-height: 34px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 7px 12px;
+}
+
+.secondaryBtn:hover {
+  border-color: rgba(230,145,56,0.38);
+  color: #fff1cf;
+}
+
 .primaryBtn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.secondaryBtn:disabled {
   opacity: 0.5;
   cursor: wait;
 }
@@ -157,15 +194,39 @@
 }
 
 .actorCard {
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.035);
+}
+
+.actorCard:hover,
+.actorCard:focus-within {
+  border-color: rgba(230,145,56,0.52);
+  background: rgba(230,145,56,0.08);
+}
+
+.actorMain {
   display: grid;
   grid-template-columns: 32px 1fr;
   align-items: center;
   gap: 9px;
   min-width: 0;
+  width: 100%;
   padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: rgba(255,255,255,0.035);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.actorMain:focus-visible,
+.actorActionBtn:focus-visible {
+  outline: 2px solid rgba(230,145,56,0.5);
+  outline-offset: -2px;
 }
 
 .actorInitial {
@@ -180,10 +241,113 @@
   font-weight: 900;
 }
 
-.actorCard strong {
+.actorMain strong {
   overflow: hidden;
   color: var(--text-primary);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.actorInfo {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.actorInfo span {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actorActionBtn {
+  width: 100%;
+  min-height: 30px;
+  border: 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.22);
+  color: #f3c06f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.actorActionBtn:hover {
+  background: rgba(230,145,56,0.16);
+  color: #ffe6b0;
+}
+
+.createDialogOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 480;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,0.58);
+  backdrop-filter: blur(2px);
+}
+
+.createDialog {
+  width: min(380px, calc(100vw - 42px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(230,145,56,0.38);
+  border-radius: var(--radius);
+  background: rgba(14,14,17,0.98);
+  box-shadow: 0 24px 78px rgba(0,0,0,0.82);
+}
+
+.dialogHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.42);
+}
+
+.dialogHeader strong {
+  flex: 1;
+  color: var(--text-primary);
+  font-family: var(--font-serif);
+  font-size: 16px;
+}
+
+.dialogClose {
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.dialogClose:hover {
+  border-color: rgba(255,93,93,0.35);
+  background: rgba(255,68,68,0.1);
+  color: #ff9a8f;
+}
+
+.dialogBody {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.dialogFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  background: rgba(0,0,0,0.34);
 }

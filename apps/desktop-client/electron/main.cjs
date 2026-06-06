@@ -1,11 +1,13 @@
-const { app, BrowserWindow, ipcMain, protocol } = require('electron')
+const { app, BrowserWindow, ipcMain, protocol, shell } = require('electron')
 const fs = require('node:fs/promises')
 const syncFs = require('node:fs')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
 const { createLocalStore } = require('./local-store.cjs')
+const { createCompanionServer } = require('./companion-server.cjs')
 
 let store = null
+let companionServer = null
 let startupLogPath = null
 let mainWindow = null
 
@@ -45,7 +47,13 @@ function registerIpc() {
   }))
   ipcMain.handle('store:getSystems', async () => store.listSystems())
   ipcMain.handle('store:createSystem', async (_event, payload) => store.createSystem(payload))
+  ipcMain.handle('store:patchSystem', async (_event, systemId, patch) => store.patchSystem(systemId, patch))
   ipcMain.handle('store:deleteSystem', async (_event, systemId) => store.deleteSystem(systemId))
+  ipcMain.handle('store:openSystemFolder', async (_event, systemId) => {
+    const folderPath = await store.getSystemPackagePath(systemId)
+    await shell.openPath(folderPath)
+    return { path: folderPath }
+  })
   ipcMain.handle('store:getWorlds', async () => store.listWorlds())
   ipcMain.handle('store:createWorld', async (_event, payload) => store.createWorld(payload))
   ipcMain.handle('store:patchWorld', async (_event, worldId, patch) => store.patchWorld(worldId, patch))
@@ -67,6 +75,8 @@ function registerIpc() {
   ipcMain.handle('store:deleteActor', async (_event, actorId) => store.deleteActor(actorId))
   ipcMain.handle('store:uploadAsset', async (_event, payload) => store.uploadAsset(payload))
   ipcMain.handle('store:deleteAsset', async (_event, assetId) => store.deleteAsset(assetId))
+  ipcMain.handle('companion:getStatus', async () => companionServer.getStatus())
+  ipcMain.handle('companion:createSession', async (_event, worldId, actorId) => companionServer.createSession(worldId, actorId))
 }
 
 function registerAssetProtocol() {
@@ -148,6 +158,16 @@ if (!hasSingleInstanceLock) {
     startupLogPath = path.join(savesDir, 'startup.log')
     appendStartupLog(`App ready. packaged=${app.isPackaged}; execPath=${process.execPath}; appPath=${app.getAppPath()}; savesDir=${savesDir}`)
     store = createLocalStore(savesDir)
+    companionServer = createCompanionServer({
+      store,
+      mobileDistDir: app.isPackaged
+        ? path.join(app.getAppPath(), 'mobile')
+        : path.join(projectRoot(), 'apps', 'mobile-companion', 'dist'),
+      onEvent: event => {
+        if (!mainWindow || mainWindow.isDestroyed()) return
+        mainWindow.webContents.send('companion:event', event)
+      },
+    })
     registerAssetProtocol()
     registerIpc()
     await createWindow()
@@ -175,4 +195,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('before-quit', () => {
+  companionServer?.close()
 })

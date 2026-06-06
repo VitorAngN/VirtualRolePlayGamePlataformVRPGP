@@ -31,17 +31,25 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - [feito] Persistir token criado no `world.json`.
 - [feito] Criar token a partir de asset do tipo `token`.
 - [feito] Apagar token local.
+- [feito] Criar sistemas locais com manifesto basico de ficha.
+- [feito] Bloquear criacao de mundo sem sistema cadastrado.
+- [feito] Criar e editar atores usando campos definidos pelo sistema do mundo.
 - Criar controle simples de iniciativa.
+- Arrastar ator para a cena e criar token vinculado a ficha.
+- Criar pastas/lista melhorada de atores.
 
 ## P2 - Integracao desktop + mobile
 
 - [feito-base] Criar API REST inicial em Go como camada opcional/futura.
 - [feito] Persistir mundos, cenas, assets e tokens em storage local do programa.
+- [feito-base] Definir servidor local embutido no desktop para hospedar o companion mobile.
+- [feito-base] Criar tela de conexao mobile por token/link local.
+- Criar QR Code a partir do link local do companion.
 - Criar servidor WebSocket basico.
 - Conectar desktop ao WebSocket.
 - Conectar mobile ao WebSocket.
-- Enviar rolagem do mobile para o chat do desktop.
-- Enviar alteracao de HP do mobile para o estado da sessao.
+- [feito-base] Enviar rolagem do mobile para o chat do desktop via HTTP local.
+- [feito-base] Enviar alteracao de HP do mobile para o estado da sessao via HTTP local.
 - Criar codigo de sala ou QR Code simulado.
 
 ## P3 - Persistencia
@@ -53,8 +61,8 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - [feito] Upload e listagem de assets.
 - [feito] Persistir `background_asset_id` da cena.
 - Definir banco de dados para 1.0.
-- Persistir personagens.
-- Persistir historico de chat ou eventos importantes.
+- [feito] Persistir personagens/atores no `world.json`.
+- [feito] Persistir historico de chat local no `world.json`.
 
 ## P4 - Regras e motor de jogo
 
@@ -63,6 +71,13 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - Implementar condicoes principais.
 - Implementar regras basicas de ataque, dano e teste.
 - Criar maquina de estados para exploracao e combate.
+- Definir manifestos de itens e compendios locais por sistema.
+- Criar sistema inicial `dnd5e-lite` orientado por JSON, sem executar scripts externos.
+- [feito-base] Criar estrutura real de pacote em `saves/systems/{systemId}/`.
+- [feito-base] Criar modo visual interno para montar sistema por templates e campos.
+- [feito-base] Criar validador de manifesto de sistema.
+- Criar motor seguro de formulas declarativas.
+- Fazer ficha D&D Lite ser renderizada por manifesto, nao por campos hardcoded.
 
 ## P5 - Entrega final
 
@@ -81,6 +96,7 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - Hook de painel lateral.
 - Protótipo de chat, cenas, toolbar e macrobar.
 - Protótipo de ficha mobile com rolagens e historico local.
+- Companion mobile conectado por token a ficha real do mundo local.
 - Modo programa local com Electron.
 - Storage local em `saves/`.
 - Backend Go inicial mantido como base opcional/futura.
@@ -91,3 +107,5 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - Tokens criados/apagados pela interface e salvos no disco.
 - Macros clicaveis com rolagens registradas no chat.
 - Cena ativa refletida no HUD do mapa.
+- Sistemas locais com tipos de ator e campos de ficha.
+- Aba de atores renderizada a partir do sistema vinculado ao mundo.

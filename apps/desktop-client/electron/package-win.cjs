@@ -4,6 +4,7 @@ const path = require('node:path')
 
 const appRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(appRoot, '../..')
+const mobileRoot = path.join(repoRoot, 'apps', 'mobile-companion')
 const electronDist = path.join(repoRoot, 'node_modules', 'electron', 'dist')
 const outputDir = path.join(repoRoot, 'release', 'VTT Lite-win32-x64')
 const resourcesAppDir = path.join(outputDir, 'resources', 'app')
@@ -71,6 +72,10 @@ async function main() {
     throw new Error('Build do frontend nao encontrado. Rode npm run build antes de empacotar.')
   }
 
+  if (!(await exists(path.join(mobileRoot, 'dist', 'index.html')))) {
+    throw new Error('Build do companion mobile nao encontrado. Rode npm run build --workspace=mobile-companion antes de empacotar.')
+  }
+
   if (!(await exists(path.join(electronDist, 'electron.exe')))) {
     throw new Error('Runtime do Electron nao encontrado em node_modules/electron/dist.')
   }
@@ -97,6 +102,8 @@ async function main() {
   await copyFile(path.join(appRoot, 'electron', 'main.cjs'), path.join(resourcesAppDir, 'electron', 'main.cjs'))
   await copyFile(path.join(appRoot, 'electron', 'preload.cjs'), path.join(resourcesAppDir, 'electron', 'preload.cjs'))
   await copyFile(path.join(appRoot, 'electron', 'local-store.cjs'), path.join(resourcesAppDir, 'electron', 'local-store.cjs'))
+  await copyFile(path.join(appRoot, 'electron', 'companion-server.cjs'), path.join(resourcesAppDir, 'electron', 'companion-server.cjs'))
+  await copyDir(path.join(mobileRoot, 'dist'), path.join(resourcesAppDir, 'mobile'))
 
   await fs.writeFile(
     path.join(resourcesAppDir, 'package.json'),

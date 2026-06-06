@@ -45,6 +45,16 @@ html, body, #root {
   -webkit-font-smoothing: antialiased;
 }
 
+select option {
+  background: #f7f3ea;
+  color: #121212;
+}
+
+select option:checked {
+  background: #d98222;
+  color: #050505;
+}
+
 /* ============================================================
    Scrollbar
    ============================================================ */

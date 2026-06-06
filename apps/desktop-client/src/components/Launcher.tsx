@@ -6,14 +6,30 @@ import {
   deleteWorld,
   getSystems,
   getWorlds,
+  openSystemFolder,
+  patchSystem,
   patchWorld,
   type ApiGameSystem,
+  type ApiSystemActorType,
+  type ApiSystemField,
   type ApiWorld,
+  type SystemFieldType,
 } from '../services/vttApi'
 import styles from './Launcher.module.css'
 
 interface LauncherProps {
   onEnterWorld: (worldId: string) => void
+}
+
+interface SystemTemplate {
+  id: string
+  label: string
+  description: string
+  ruleset: string
+  actorTypeLabel: string
+  gridDistance: string
+  gridUnits: string
+  fields: ApiSystemField[]
 }
 
 const NEWS_ITEMS = [
@@ -34,6 +50,196 @@ const JOIN_THEMES = [
   { id: 'dark', label: 'Escuro' },
   { id: 'classic', label: 'Classico' },
 ]
+
+const FIELD_TYPES: SystemFieldType[] = ['text', 'number', 'textarea', 'checkbox']
+
+const DEFAULT_ACTOR_FIELDS: ApiSystemField[] = [
+  { id: 'level', label: 'Nivel', type: 'number', section: 'Identidade', default_value: 1 },
+  { id: 'class_name', label: 'Classe', type: 'text', section: 'Identidade', default_value: '' },
+  { id: 'ancestry', label: 'Ancestralidade', type: 'text', section: 'Identidade', default_value: '' },
+  { id: 'background', label: 'Antecedente', type: 'text', section: 'Identidade', default_value: '' },
+  { id: 'proficiency_bonus', label: 'Bonus de proficiencia', type: 'number', section: 'Identidade', default_value: 2 },
+  { id: 'hp', label: 'PV atual', type: 'number', section: 'Combate', default_value: 10 },
+  { id: 'max_hp', label: 'PV maximo', type: 'number', section: 'Combate', default_value: 10 },
+  { id: 'temp_hp', label: 'PV temporario', type: 'number', section: 'Combate', default_value: 0 },
+  { id: 'ac', label: 'CA', type: 'number', section: 'Combate', default_value: 10 },
+  { id: 'speed', label: 'Deslocamento', type: 'number', section: 'Combate', default_value: 9 },
+  { id: 'str', label: 'Forca', type: 'number', section: 'Atributos', default_value: 10 },
+  { id: 'dex', label: 'Destreza', type: 'number', section: 'Atributos', default_value: 10 },
+  { id: 'con', label: 'Constituicao', type: 'number', section: 'Atributos', default_value: 10 },
+  { id: 'int', label: 'Inteligencia', type: 'number', section: 'Atributos', default_value: 10 },
+  { id: 'wis', label: 'Sabedoria', type: 'number', section: 'Atributos', default_value: 10 },
+  { id: 'cha', label: 'Carisma', type: 'number', section: 'Atributos', default_value: 10 },
+  { id: 'save_str_prof', label: 'Prof. teste Forca', type: 'checkbox', section: 'Salvaguardas', default_value: false },
+  { id: 'save_dex_prof', label: 'Prof. teste Destreza', type: 'checkbox', section: 'Salvaguardas', default_value: false },
+  { id: 'save_con_prof', label: 'Prof. teste Constituicao', type: 'checkbox', section: 'Salvaguardas', default_value: false },
+  { id: 'save_int_prof', label: 'Prof. teste Inteligencia', type: 'checkbox', section: 'Salvaguardas', default_value: false },
+  { id: 'save_wis_prof', label: 'Prof. teste Sabedoria', type: 'checkbox', section: 'Salvaguardas', default_value: false },
+  { id: 'save_cha_prof', label: 'Prof. teste Carisma', type: 'checkbox', section: 'Salvaguardas', default_value: false },
+  { id: 'skill_acrobatics_prof', label: 'Prof. Acrobacia', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_animal_handling_prof', label: 'Prof. Adestrar Animais', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_arcana_prof', label: 'Prof. Arcanismo', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_athletics_prof', label: 'Prof. Atletismo', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_deception_prof', label: 'Prof. Enganacao', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_history_prof', label: 'Prof. Historia', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_insight_prof', label: 'Prof. Intuicao', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_intimidation_prof', label: 'Prof. Intimidacao', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_investigation_prof', label: 'Prof. Investigacao', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_medicine_prof', label: 'Prof. Medicina', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_nature_prof', label: 'Prof. Natureza', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_perception_prof', label: 'Prof. Percepcao', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_performance_prof', label: 'Prof. Performance', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_persuasion_prof', label: 'Prof. Persuasao', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_religion_prof', label: 'Prof. Religiao', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_sleight_of_hand_prof', label: 'Prof. Prestidigitacao', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_stealth_prof', label: 'Prof. Furtividade', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'skill_survival_prof', label: 'Prof. Sobrevivencia', type: 'checkbox', section: 'Pericias', default_value: false },
+  { id: 'senses', label: 'Sentidos', type: 'text', section: 'Traits', default_value: '' },
+  { id: 'languages', label: 'Idiomas', type: 'text', section: 'Traits', default_value: '' },
+  { id: 'resistances', label: 'Resistencias', type: 'text', section: 'Traits', default_value: '' },
+  { id: 'notes', label: 'Notas', type: 'textarea', section: 'Notas', default_value: '' },
+]
+
+const SIMPLE_ACTOR_FIELDS: ApiSystemField[] = [
+  { id: 'hp', label: 'PV atual', type: 'number', section: 'Combate', default_value: 10 },
+  { id: 'max_hp', label: 'PV maximo', type: 'number', section: 'Combate', default_value: 10 },
+  { id: 'ac', label: 'Defesa/CA', type: 'number', section: 'Combate', default_value: 10 },
+  { id: 'notes', label: 'Notas', type: 'textarea', section: 'Notas', default_value: '' },
+]
+
+const SYSTEM_TEMPLATES: SystemTemplate[] = [
+  {
+    id: 'dnd5e-lite',
+    label: 'D&D 5e Lite',
+    description: 'Atributos, PV, CA, salvaguardas e pericias para um sistema d20.',
+    ruleset: 'd20',
+    actorTypeLabel: 'Personagem',
+    gridDistance: '5',
+    gridUnits: 'ft',
+    fields: DEFAULT_ACTOR_FIELDS,
+  },
+  {
+    id: 'simple-rpg',
+    label: 'RPG simples',
+    description: 'Ficha curta com PV, defesa e notas. Boa para comecar do zero.',
+    ruleset: 'custom',
+    actorTypeLabel: 'Personagem',
+    gridDistance: '1',
+    gridUnits: 'quadrado',
+    fields: SIMPLE_ACTOR_FIELDS,
+  },
+  {
+    id: 'blank',
+    label: 'Em branco',
+    description: 'Comeca quase vazio para montar um sistema totalmente proprio.',
+    ruleset: 'custom',
+    actorTypeLabel: 'Personagem',
+    gridDistance: '1',
+    gridUnits: 'unidade',
+    fields: [{ id: 'notes', label: 'Notas', type: 'textarea', section: 'Notas', default_value: '' }],
+  },
+]
+
+function fieldId(value: string, fallback = 'campo') {
+  return (value || fallback)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 36) || fallback
+}
+
+function parseDefaultValue(type: SystemFieldType, value: unknown) {
+  if (type === 'number') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  if (type === 'checkbox') {
+    if (typeof value === 'boolean') return value
+    return ['1', 'true', 'sim', 'yes', 'on'].includes(String(value ?? '').trim().toLowerCase())
+  }
+
+  return String(value ?? '')
+}
+
+function cloneActorFields(fields: ApiSystemField[] = []) {
+  return fields.map(field => ({ ...field }))
+}
+
+function normalizeActorFields(fields: ApiSystemField[]) {
+  return fields
+    .map((field, index) => {
+      const type = FIELD_TYPES.includes(field.type) ? field.type : 'text'
+      const label = String(field.label || field.id || `Campo ${index + 1}`).trim() || `Campo ${index + 1}`
+
+      return {
+        id: fieldId(field.id || label, `campo_${index + 1}`),
+        label,
+        type,
+        section: String(field.section || 'Basico').trim() || 'Basico',
+        default_value: parseDefaultValue(type, field.default_value),
+      }
+    })
+}
+
+function makeActorType(label: string, fields: ApiSystemField[]): ApiSystemActorType {
+  const safeLabel = label.trim() || 'Personagem'
+
+  return {
+    id: fieldId(safeLabel, 'personagem'),
+    label: safeLabel,
+    fields: normalizeActorFields(fields),
+  }
+}
+
+function newSystemField(index: number): ApiSystemField {
+  return {
+    id: `campo_${index + 1}`,
+    label: `Campo ${index + 1}`,
+    type: 'text',
+    section: 'Basico',
+    default_value: '',
+  }
+}
+
+function duplicatedValues(values: string[]) {
+  const seen = new Set<string>()
+  const duplicated = new Set<string>()
+
+  for (const value of values) {
+    if (seen.has(value)) duplicated.add(value)
+    seen.add(value)
+  }
+
+  return Array.from(duplicated)
+}
+
+function validateSystemDraft(systemName: string, actorType: ApiSystemActorType, gridDistance: string, gridUnits: string) {
+  const errors: string[] = []
+
+  if (!systemName.trim()) errors.push('Nome do sistema e obrigatorio.')
+  if (!actorType.label.trim()) errors.push('Tipo inicial de ator precisa ter nome.')
+  if (actorType.fields.length === 0) errors.push('Adicione pelo menos um campo na ficha.')
+
+  const duplicatedFieldIds = duplicatedValues(actorType.fields.map(field => field.id))
+  if (duplicatedFieldIds.length > 0) {
+    errors.push(`IDs de campo duplicados: ${duplicatedFieldIds.join(', ')}.`)
+  }
+
+  actorType.fields.forEach((field, index) => {
+    if (!field.id.trim()) errors.push(`Campo ${index + 1} precisa ter ID.`)
+    if (!field.label.trim()) errors.push(`Campo ${field.id || index + 1} precisa ter rotulo.`)
+    if (!FIELD_TYPES.includes(field.type)) errors.push(`Campo ${field.label || field.id} usa tipo invalido.`)
+  })
+
+  const distance = Number(gridDistance)
+  if (!Number.isFinite(distance) || distance <= 0) errors.push('Distancia do grid precisa ser maior que zero.')
+  if (!gridUnits.trim()) errors.push('Unidade do grid e obrigatoria.')
+
+  return errors
+}
 
 function formatLocalCount(count: number, singular: string, plural: string) {
   return `${count} ${count === 1 ? singular : plural} ${count === 1 ? 'local' : 'locais'}`
@@ -77,8 +283,10 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
   const [creatingWorld, setCreatingWorld] = useState(false)
   const [creatingSystem, setCreatingSystem] = useState(false)
   const [savingWorld, setSavingWorld] = useState(false)
-  const [modal, setModal] = useState<'world' | 'system' | 'editWorld' | null>(null)
+  const [savingSystem, setSavingSystem] = useState(false)
+  const [modal, setModal] = useState<'world' | 'system' | 'editWorld' | 'editSystem' | null>(null)
   const [selectedWorld, setSelectedWorld] = useState<ApiWorld | null>(null)
+  const [selectedSystem, setSelectedSystem] = useState<ApiGameSystem | null>(null)
   const [contextMenu, setContextMenu] = useState<{ world: ApiWorld; x: number; y: number } | null>(null)
   const [formError, setFormError] = useState('')
   const [worldForm, setWorldForm] = useState({
@@ -96,6 +304,11 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
     ruleset: '',
     version: '',
     description: '',
+    templateId: 'dnd5e-lite',
+    actorTypeLabel: 'Personagem',
+    actorFields: cloneActorFields(DEFAULT_ACTOR_FIELDS),
+    gridDistance: '5',
+    gridUnits: 'ft',
   })
 
   useEffect(() => {
@@ -107,6 +320,7 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
       if (event.key === 'Escape') {
         setContextMenu(null)
         setSelectedWorld(null)
+        setSelectedSystem(null)
         setModal(null)
       }
     }
@@ -177,9 +391,87 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
   }
 
   function openSystemModal() {
-    setSystemForm({ name: '', ruleset: '', version: '', description: '' })
+    setSystemForm({
+      name: '',
+      ruleset: '',
+      version: '0.1',
+      description: '',
+      templateId: 'dnd5e-lite',
+      actorTypeLabel: 'Personagem',
+      actorFields: cloneActorFields(DEFAULT_ACTOR_FIELDS),
+      gridDistance: '5',
+      gridUnits: 'ft',
+    })
+    setSelectedSystem(null)
     setFormError('')
     setModal('system')
+  }
+
+  function openEditSystemModal(system: ApiGameSystem) {
+    const actorType = system.actor_types?.[0]
+    setSystemForm({
+      name: system.name,
+      ruleset: system.ruleset || '',
+      version: system.version || '0.1',
+      description: system.description || '',
+      templateId: 'custom',
+      actorTypeLabel: actorType?.label || 'Personagem',
+      actorFields: cloneActorFields(actorType?.fields?.length ? actorType.fields : DEFAULT_ACTOR_FIELDS),
+      gridDistance: String(system.grid?.distance ?? 5),
+      gridUnits: system.grid?.units || 'ft',
+    })
+    setSelectedSystem(system)
+    setFormError('')
+    setModal('editSystem')
+  }
+
+  function applySystemTemplate(templateId: string) {
+    const template = SYSTEM_TEMPLATES.find(item => item.id === templateId)
+    if (!template) return
+
+    setSystemForm(prev => ({
+      ...prev,
+      templateId: template.id,
+      ruleset: template.ruleset,
+      actorTypeLabel: template.actorTypeLabel,
+      actorFields: cloneActorFields(template.fields),
+      gridDistance: template.gridDistance,
+      gridUnits: template.gridUnits,
+    }))
+  }
+
+  function updateSystemField(index: number, patch: Partial<ApiSystemField>) {
+    setSystemForm(prev => ({
+      ...prev,
+      templateId: 'custom',
+      actorFields: prev.actorFields.map((field, fieldIndex) => (
+        fieldIndex === index
+          ? {
+              ...field,
+              ...patch,
+              default_value: patch.type && patch.type !== field.type
+                ? parseDefaultValue(patch.type, field.default_value)
+                : patch.default_value ?? field.default_value,
+            }
+          : field
+      )),
+    }))
+  }
+
+  function addSystemField() {
+    setSystemForm(prev => ({
+      ...prev,
+      templateId: 'custom',
+      actorFields: [...prev.actorFields, newSystemField(prev.actorFields.length)],
+    }))
+  }
+
+  function removeSystemField(index: number) {
+    setSystemForm(prev => ({
+      ...prev,
+      templateId: 'custom',
+      actorFields: prev.actorFields.filter((_, fieldIndex) => fieldIndex !== index),
+    }))
   }
 
   async function handleCreateWorld(event: FormEvent<HTMLFormElement>) {
@@ -218,6 +510,14 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
   async function handleCreateSystem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!systemForm.name.trim()) return
+    const actorType = makeActorType(systemForm.actorTypeLabel, systemForm.actorFields)
+
+    const validationErrors = validateSystemDraft(systemForm.name, actorType, systemForm.gridDistance, systemForm.gridUnits)
+    if (validationErrors.length > 0) {
+      setFormError(validationErrors.map(error => `- ${error}`).join('\n'))
+      return
+    }
+
     setCreatingSystem(true)
     setFormError('')
     try {
@@ -226,6 +526,11 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
         ruleset: systemForm.ruleset.trim(),
         version: systemForm.version.trim(),
         description: systemForm.description.trim(),
+        actor_types: [actorType],
+        grid: {
+          distance: Number(systemForm.gridDistance) || 5,
+          units: systemForm.gridUnits.trim() || 'ft',
+        },
       })
       setSystems(prev => [...prev, system])
       setActiveTab('systems')
@@ -234,6 +539,46 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
       setFormError(error instanceof Error ? error.message : 'Nao consegui criar o sistema.')
     } finally {
       setCreatingSystem(false)
+    }
+  }
+
+  async function handleEditSystem(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!selectedSystem || !systemForm.name.trim()) return
+    const actorType = makeActorType(systemForm.actorTypeLabel, systemForm.actorFields)
+
+    const validationErrors = validateSystemDraft(systemForm.name, actorType, systemForm.gridDistance, systemForm.gridUnits)
+    if (validationErrors.length > 0) {
+      setFormError(validationErrors.map(error => `- ${error}`).join('\n'))
+      return
+    }
+
+    setSavingSystem(true)
+    setFormError('')
+    try {
+      const updatedSystem = await patchSystem(selectedSystem.id, {
+        name: systemForm.name.trim(),
+        ruleset: systemForm.ruleset.trim(),
+        version: systemForm.version.trim(),
+        description: systemForm.description.trim(),
+        actor_types: [actorType],
+        grid: {
+          distance: Number(systemForm.gridDistance) || 5,
+          units: systemForm.gridUnits.trim() || 'ft',
+        },
+      })
+      setSystems(prev => prev.map(system => (system.id === updatedSystem.id ? updatedSystem : system)))
+      setWorlds(prev => prev.map(world => (
+        world.system_id === updatedSystem.id
+          ? { ...world, system: updatedSystem.name }
+          : world
+      )))
+      setSelectedSystem(null)
+      setModal(null)
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Nao consegui atualizar o sistema.')
+    } finally {
+      setSavingSystem(false)
     }
   }
 
@@ -293,11 +638,23 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
   }
 
   async function handleDeleteSystem(system: ApiGameSystem) {
-    const confirmed = window.confirm(`Apagar o sistema "${system.name}"? Os mundos existentes continuam salvos.`)
+    const confirmed = window.confirm(`Apagar o sistema "${system.name}"? Isso so funciona se nenhum mundo estiver usando ele.`)
     if (!confirmed) return
 
-    await deleteSystem(system.id)
-    setSystems(prev => prev.filter(item => item.id !== system.id))
+    try {
+      await deleteSystem(system.id)
+      setSystems(prev => prev.filter(item => item.id !== system.id))
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Nao consegui apagar esse sistema.')
+    }
+  }
+
+  async function handleOpenSystemFolder(system: ApiGameSystem) {
+    try {
+      await openSystemFolder(system.id)
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Nao consegui abrir a pasta desse sistema.')
+    }
   }
 
   const isWorldsTab = activeTab === 'worlds'
@@ -491,13 +848,35 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
                       <p className={styles.systemDescription}>
                         {system.description || 'Sistema local criado para vincular mundos e futuras regras da mesa.'}
                       </p>
-                      <button
-                        className={styles.systemDeleteBtn}
-                        type="button"
-                        onClick={() => handleDeleteSystem(system)}
-                      >
-                        Apagar
-                      </button>
+                      <div className={styles.systemMeta}>
+                        <span>{system.actor_types?.length || 0} tipos de ator</span>
+                        <span>{system.actor_types?.reduce((sum, type) => sum + type.fields.length, 0) || 0} campos</span>
+                        <span>{system.grid?.distance ?? 5} {system.grid?.units || 'ft'}</span>
+                      </div>
+                      <code className={styles.systemPath}>{system.manifest_path || 'systems/.../system.json'}</code>
+                      <div className={styles.systemActions}>
+                        <button
+                          className={styles.systemActionBtn}
+                          type="button"
+                          onClick={() => handleOpenSystemFolder(system)}
+                        >
+                          Pasta
+                        </button>
+                        <button
+                          className={styles.systemActionBtn}
+                          type="button"
+                          onClick={() => openEditSystemModal(system)}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          className={styles.systemDeleteBtn}
+                          type="button"
+                          onClick={() => handleDeleteSystem(system)}
+                        >
+                          Apagar
+                        </button>
+                      </div>
                     </article>
                   ))}
 
@@ -766,12 +1145,29 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
         </div>
       )}
 
-      {modal === 'system' && (
-        <div className={styles.modalOverlay} onMouseDown={() => !creatingSystem && setModal(null)}>
-          <form className={styles.modal} onSubmit={handleCreateSystem} onMouseDown={event => event.stopPropagation()}>
+      {(modal === 'system' || modal === 'editSystem') && (
+        <div className={styles.modalOverlay} onMouseDown={() => {
+          if (!creatingSystem && !savingSystem) {
+            setSelectedSystem(null)
+            setModal(null)
+          }
+        }}>
+          <form
+            className={styles.modalLarge}
+            onSubmit={modal === 'editSystem' ? handleEditSystem : handleCreateSystem}
+            onMouseDown={event => event.stopPropagation()}
+          >
             <div className={styles.modalHeader}>
-              <strong>Criar sistema</strong>
-              <button className={styles.modalClose} type="button" onClick={() => setModal(null)} disabled={creatingSystem}>
+              <strong>{modal === 'editSystem' ? 'Editar sistema' : 'Criar sistema'}</strong>
+              <button
+                className={styles.modalClose}
+                type="button"
+                onClick={() => {
+                  setSelectedSystem(null)
+                  setModal(null)
+                }}
+                disabled={creatingSystem || savingSystem}
+              >
                 x
               </button>
             </div>
@@ -783,7 +1179,7 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
                   value={systemForm.name}
                   onChange={event => setSystemForm(prev => ({ ...prev, name: event.target.value }))}
                   autoFocus
-                  placeholder="Ex: Tormenta, D&D, Ordem, sistema proprio"
+                  placeholder="Ex: D&D 5e Lite, Tormenta, Ordem, sistema proprio"
                 />
               </label>
               <div className={styles.formGrid}>
@@ -806,6 +1202,139 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
                   />
                 </label>
               </div>
+              <div className={styles.formGrid}>
+                <label className={styles.formRow}>
+                  <span className={styles.formLabel}>Distancia do grid</span>
+                  <input
+                    className={styles.formInput}
+                    type="number"
+                    min="1"
+                    value={systemForm.gridDistance}
+                    onChange={event => setSystemForm(prev => ({ ...prev, gridDistance: event.target.value }))}
+                  />
+                </label>
+                <label className={styles.formRow}>
+                  <span className={styles.formLabel}>Unidade do grid</span>
+                  <input
+                    className={styles.formInput}
+                    value={systemForm.gridUnits}
+                    onChange={event => setSystemForm(prev => ({ ...prev, gridUnits: event.target.value }))}
+                    placeholder="ft, m, quadrados..."
+                  />
+                </label>
+              </div>
+              <section className={styles.creatorPanel}>
+                <div className={styles.creatorPanelHeader}>
+                  <span className={styles.formLabel}>Templates</span>
+                  <small>Escolha uma base e ajuste os campos sem mexer em JSON.</small>
+                </div>
+                <div className={styles.templateGrid}>
+                  {SYSTEM_TEMPLATES.map(template => (
+                    <button
+                      key={template.id}
+                      className={`${styles.templateCard} ${systemForm.templateId === template.id ? styles.templateCardActive : ''}`}
+                      type="button"
+                      onClick={() => applySystemTemplate(template.id)}
+                    >
+                      <strong>{template.label}</strong>
+                      <span>{template.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+              <label className={styles.formRow}>
+                <span className={styles.formLabel}>Tipo inicial de ator</span>
+                <input
+                  className={styles.formInput}
+                  value={systemForm.actorTypeLabel}
+                  onChange={event => setSystemForm(prev => ({ ...prev, actorTypeLabel: event.target.value }))}
+                  placeholder="Personagem, NPC, Criatura..."
+                />
+              </label>
+              <section className={styles.fieldBuilder}>
+                <div className={styles.fieldBuilderHeader}>
+                  <div>
+                    <span className={styles.formLabel}>Campos da ficha</span>
+                    <p>Estes campos vao para o `system.json` e aparecem na ficha desse tipo de ator.</p>
+                  </div>
+                  <button className={styles.systemActionBtn} type="button" onClick={addSystemField}>
+                    Adicionar campo
+                  </button>
+                </div>
+                <div className={styles.fieldBuilderRows}>
+                  {systemForm.actorFields.map((field, index) => (
+                    <div className={styles.fieldBuilderRow} key={`${field.id}-${index}`}>
+                      <label>
+                        <span>Rotulo</span>
+                        <input
+                          className={styles.formInput}
+                          value={field.label}
+                          onChange={event => updateSystemField(index, {
+                            label: event.target.value,
+                            id: fieldId(event.target.value, field.id),
+                          })}
+                        />
+                      </label>
+                      <label>
+                        <span>ID</span>
+                        <input
+                          className={styles.formInput}
+                          value={field.id}
+                          onChange={event => updateSystemField(index, { id: fieldId(event.target.value, field.id) })}
+                        />
+                      </label>
+                      <label>
+                        <span>Tipo</span>
+                        <select
+                          className={styles.formSelect}
+                          value={field.type}
+                          onChange={event => updateSystemField(index, { type: event.target.value as SystemFieldType })}
+                        >
+                          {FIELD_TYPES.map(type => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>Padrao</span>
+                        {field.type === 'checkbox' ? (
+                          <span className={styles.builderCheck}>
+                            <input
+                              type="checkbox"
+                              checked={Boolean(field.default_value)}
+                              onChange={event => updateSystemField(index, { default_value: event.target.checked })}
+                            />
+                            Ligado
+                          </span>
+                        ) : (
+                          <input
+                            className={styles.formInput}
+                            type={field.type === 'number' ? 'number' : 'text'}
+                            value={String(field.default_value ?? '')}
+                            onChange={event => updateSystemField(index, { default_value: parseDefaultValue(field.type, event.target.value) })}
+                          />
+                        )}
+                      </label>
+                      <label>
+                        <span>Secao</span>
+                        <input
+                          className={styles.formInput}
+                          value={field.section}
+                          onChange={event => updateSystemField(index, { section: event.target.value })}
+                        />
+                      </label>
+                      <button
+                        className={styles.fieldRemoveBtn}
+                        type="button"
+                        onClick={() => removeSystemField(index)}
+                        disabled={systemForm.actorFields.length <= 1}
+                      >
+                        Apagar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
               <label className={styles.formRow}>
                 <span className={styles.formLabel}>Descricao</span>
                 <textarea
@@ -819,11 +1348,21 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
               {formError && <div className={styles.formError}>{formError}</div>}
             </div>
             <div className={styles.modalFooter}>
-              <button className={styles.secondaryBtn} type="button" onClick={() => setModal(null)} disabled={creatingSystem}>
+              <button
+                className={styles.secondaryBtn}
+                type="button"
+                onClick={() => {
+                  setSelectedSystem(null)
+                  setModal(null)
+                }}
+                disabled={creatingSystem || savingSystem}
+              >
                 Cancelar
               </button>
-              <button className={styles.primaryBtn} type="submit" disabled={!systemForm.name.trim() || creatingSystem}>
-                {creatingSystem ? 'Criando...' : 'Criar sistema'}
+              <button className={styles.primaryBtn} type="submit" disabled={!systemForm.name.trim() || creatingSystem || savingSystem}>
+                {modal === 'editSystem'
+                  ? (savingSystem ? 'Salvando...' : 'Salvar sistema')
+                  : (creatingSystem ? 'Criando...' : 'Criar sistema')}
               </button>
             </div>
           </form>
