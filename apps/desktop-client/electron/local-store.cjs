@@ -201,6 +201,51 @@ function defaultActorFields() {
   ]
 }
 
+function isDndLikeSystem(system) {
+  const signature = `${system?.id || ''} ${system?.name || ''} ${system?.ruleset || ''}`.toLowerCase()
+  return signature.includes('dnd')
+    || signature.includes('d&d')
+    || signature.includes('dungeons')
+    || signature.includes('5e')
+    || signature.includes('d20')
+}
+
+function isNpcLikeActorType(actorType) {
+  const signature = `${actorType?.id || ''} ${actorType?.label || ''}`.toLowerCase()
+  return signature.includes('npc')
+    || signature.includes('monstro')
+    || signature.includes('monster')
+    || signature.includes('criatura')
+    || signature.includes('creature')
+}
+
+function mergeDndLiteFields(actorType, index = 0) {
+  if (isNpcLikeActorType(actorType) && index !== 0) return actorType
+
+  const blueprints = defaultActorFields().map((field, fieldIndex) => normalizeSystemField(field, fieldIndex))
+  const blueprintById = new Map(blueprints.map(field => [field.id, field]))
+  const existingFields = Array.isArray(actorType.fields) ? actorType.fields : []
+  const existingIds = new Set(existingFields.map(field => field.id))
+
+  const mergedExistingFields = existingFields.map(field => {
+    const blueprint = blueprintById.get(field.id)
+    if (!blueprint) return field
+
+    return {
+      ...blueprint,
+      ...field,
+      section: !field.section || field.section === 'Basico' ? blueprint.section : field.section,
+      roll_formula: field.roll_formula || blueprint.roll_formula || '',
+    }
+  })
+
+  const missingFields = blueprints.filter(field => !existingIds.has(field.id))
+  return {
+    ...actorType,
+    fields: [...mergedExistingFields, ...missingFields],
+  }
+}
+
 function normalizeActorType(actorType, index = 0) {
   const label = String(actorType?.label || actorType?.name || 'Personagem').trim() || 'Personagem'
   const id = fieldId(actorType?.id || label, index === 0 ? 'personagem' : `ator_${index + 1}`)
@@ -242,6 +287,10 @@ function normalizeSystem(system) {
     manifest_path: String(system?.manifest_path || system?.manifestPath || ''),
     created_at: String(system?.created_at || timestamp),
     updated_at: String(system?.updated_at || timestamp),
+  }
+
+  if (isDndLikeSystem(normalized)) {
+    normalized.actor_types = normalized.actor_types.map((actorType, index) => mergeDndLiteFields(actorType, index))
   }
 
   validateSystemManifest(normalized)
@@ -548,6 +597,12 @@ function createLocalStore(savesDir) {
       data.system = linkedSystem
     } else if (data.system) {
       data.system = normalizeSystem(data.system)
+    } else if (data.world?.system) {
+      data.system = normalizeSystem({
+        name: data.world.system,
+        ruleset: data.world.system,
+        actor_types: [{ id: 'personagem', label: 'Personagem' }],
+      })
     }
     return data
   }

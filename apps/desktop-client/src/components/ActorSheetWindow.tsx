@@ -41,6 +41,13 @@ const SECTION_ORDER = [
   'Notas',
 ]
 
+function normalizedSectionKey(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
 const ABILITIES = [
   { id: 'str', short: 'FOR', label: 'Forca' },
   { id: 'dex', short: 'DES', label: 'Destreza' },
@@ -152,8 +159,10 @@ export default function ActorSheetWindow({ actor, system, onClose, onSave, onRol
     return Array.from(groups.entries())
       .map(([section, fields]) => ({ section, fields }))
       .sort((a, b) => {
-        const aIndex = SECTION_ORDER.indexOf(a.section)
-        const bIndex = SECTION_ORDER.indexOf(b.section)
+        const aKey = normalizedSectionKey(a.section)
+        const bKey = normalizedSectionKey(b.section)
+        const aIndex = SECTION_ORDER.findIndex(section => normalizedSectionKey(section) === aKey)
+        const bIndex = SECTION_ORDER.findIndex(section => normalizedSectionKey(section) === bKey)
         if (aIndex === -1 && bIndex === -1) return a.section.localeCompare(b.section)
         if (aIndex === -1) return 1
         if (bIndex === -1) return -1
@@ -592,15 +601,16 @@ export default function ActorSheetWindow({ actor, system, onClose, onSave, onRol
   }
 
   function renderSection() {
+    const sectionKey = normalizedSectionKey(activeSection)
     if (activeFields.length === 0) {
       return <p className={styles.emptySection}>Essa aba ainda nao tem campos no sistema.</p>
     }
 
-    if (activeSection === 'Identidade') return renderIdentity(activeFields)
-    if (activeSection === 'Combate') return renderCombat(activeFields)
-    if (activeSection === 'Atributos') return renderAbilities(activeFields)
-    if (activeSection === 'Salvaguardas') return renderSaves(activeFields)
-    if (activeSection === 'Pericias') return renderSkills(activeFields)
+    if (sectionKey === 'identidade') return renderIdentity(activeFields)
+    if (sectionKey === 'combate') return renderCombat(activeFields)
+    if (sectionKey === 'atributos') return renderAbilities(activeFields)
+    if (sectionKey === 'salvaguardas') return renderSaves(activeFields)
+    if (sectionKey === 'pericias') return renderSkills(activeFields)
     return renderGenericFields(activeFields)
   }
 
