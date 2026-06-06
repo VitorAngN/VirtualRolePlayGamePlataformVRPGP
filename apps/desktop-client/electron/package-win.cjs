@@ -6,9 +6,10 @@ const appRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(appRoot, '../..')
 const mobileRoot = path.join(repoRoot, 'apps', 'mobile-companion')
 const electronDist = path.join(repoRoot, 'node_modules', 'electron', 'dist')
-const outputDir = path.join(repoRoot, 'release', 'VTT Lite-win32-x64')
-const resourcesAppDir = path.join(outputDir, 'resources', 'app')
+const defaultOutputDir = path.join(repoRoot, 'release', 'VTT Lite-win32-x64')
 const preservedSavesDir = path.join(os.tmpdir(), 'vtt-lite-package-preserved-saves')
+let outputDir = defaultOutputDir
+let resourcesAppDir = path.join(outputDir, 'resources', 'app')
 
 async function exists(filePath) {
   try {
@@ -59,6 +60,21 @@ async function copyNodePackage(packageName) {
   throw new Error(`Pacote ${packageName} nao encontrado em node_modules.`)
 }
 
+async function prepareOutputDir() {
+  try {
+    await fs.rm(defaultOutputDir, { recursive: true, force: true })
+    outputDir = defaultOutputDir
+  } catch (error) {
+    if (!['EBUSY', 'EPERM', 'ENOTEMPTY'].includes(error?.code)) throw error
+
+    outputDir = path.join(repoRoot, 'release', 'VTT Lite-win32-x64-next')
+    console.warn(`Pasta padrao em uso. Gerando pacote alternativo em: ${outputDir}`)
+    await fs.rm(outputDir, { recursive: true, force: true })
+  }
+
+  resourcesAppDir = path.join(outputDir, 'resources', 'app')
+}
+
 async function normalizeSavesIndex(savesDir) {
   const indexPath = path.join(savesDir, 'index.json')
   let index = { worlds: [], systems: [] }
@@ -96,14 +112,14 @@ async function main() {
     throw new Error('Runtime do Electron nao encontrado em node_modules/electron/dist.')
   }
 
-  const currentSavesDir = path.join(outputDir, 'saves')
+  const currentSavesDir = path.join(defaultOutputDir, 'saves')
   const hadExistingSaves = await exists(currentSavesDir)
   await fs.rm(preservedSavesDir, { recursive: true, force: true })
   if (hadExistingSaves) {
     await copyDir(currentSavesDir, preservedSavesDir)
   }
 
-  await fs.rm(outputDir, { recursive: true, force: true })
+  await prepareOutputDir()
   await copyDir(electronDist, outputDir)
 
   const electronExe = path.join(outputDir, 'electron.exe')

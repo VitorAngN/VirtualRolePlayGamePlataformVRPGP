@@ -45,7 +45,12 @@ html, body, #root {
   -webkit-font-smoothing: antialiased;
 }
 
-select option {
+select {
+  color-scheme: dark;
+}
+
+select option,
+datalist option {
   background: #f7f3ea;
   color: #121212;
 }

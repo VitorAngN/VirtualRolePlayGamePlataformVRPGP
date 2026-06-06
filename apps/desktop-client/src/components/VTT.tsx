@@ -155,13 +155,36 @@ function rollDie(sides: number) {
 }
 
 function rollFormula(formula: string): RollResult | null {
-  const match = formula.trim().match(/^(\d+)d(\d+)([+-]\d+)?$/)
-  if (!match) return null
+  const compactFormula = formula.trim().replace(/\s+/g, '')
+  if (!compactFormula) return null
 
-  const amount = Number(match[1])
-  const sides = Number(match[2])
-  const modifier = Number(match[3] ?? 0)
-  const rolls = Array.from({ length: amount }, () => rollDie(sides))
+  const terms = compactFormula.match(/[+-]?[^+-]+/g) || []
+  if (terms.join('') !== compactFormula) return null
+
+  const rolls: number[] = []
+  let modifier = 0
+
+  for (const rawTerm of terms) {
+    const sign = rawTerm.startsWith('-') ? -1 : 1
+    const term = rawTerm.replace(/^[+-]/, '')
+    const diceMatch = term.match(/^(\d*)d(\d+)$/i)
+
+    if (diceMatch) {
+      const amount = Number(diceMatch[1] || 1)
+      const sides = Number(diceMatch[2])
+      if (!Number.isInteger(amount) || !Number.isInteger(sides) || amount < 1 || amount > 100 || sides < 2 || sides > 1000) return null
+
+      for (let index = 0; index < amount; index += 1) {
+        rolls.push(sign * rollDie(sides))
+      }
+      continue
+    }
+
+    const numberValue = Number(term)
+    if (!Number.isFinite(numberValue)) return null
+    modifier += sign * numberValue
+  }
+
   const total = rolls.reduce((sum, value) => sum + value, 0) + modifier
 
   return { total, rolls, modifier }

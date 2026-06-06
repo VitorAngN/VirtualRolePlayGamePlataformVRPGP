@@ -36,7 +36,10 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - [feito] Criar e editar atores usando campos definidos pelo sistema do mundo.
 - Criar controle simples de iniciativa.
 - Arrastar ator para a cena e criar token vinculado a ficha.
+- Vincular token a ator para PV/CA/nome virem da ficha e serem atualizados juntos.
+- Controlar token de personagem na cena com permissao por jogador.
 - Criar pastas/lista melhorada de atores.
+- Diferenciar tipos de ator `Personagem` e `NPC`, com NPC sem link mobile por padrao e controle apenas do mestre.
 
 ## P2 - Integracao desktop + mobile
 
@@ -57,8 +60,11 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - [feito-base] Gerar abas da ficha mobile a partir das secoes do sistema.
 - [feito-base] Enviar chat pelo mobile quando permitido.
 - [feito-base] Persistir permissoes mobile por jogador/ficha.
+- Visualizar mapa no celular como cliente leve.
+- Permitir movimento do token pelo celular respeitando grid/permissao.
 - Criar codigo de sala local amigavel.
 - Criar tunel/acesso externo assistido.
+- Criar usuarios reais do mundo, com login local, papeis e permissoes por ficha/token.
 
 ## P3 - Persistencia
 
@@ -88,6 +94,17 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - [feito-base] Criar validador de manifesto de sistema.
 - [feito-base] Criar motor seguro de formulas declarativas.
 - Fazer ficha D&D Lite ser renderizada por manifesto, nao por campos hardcoded.
+- Criar schema de abas/layout do sistema alem do agrupamento simples por `section`.
+- Criar tipos de ator e item avancados por sistema, incluindo `Personagem`, `NPC`, `Item`, `Magia` e `Condicao`.
+
+## P4.5 - Mapa, visao e paredes
+
+- Criar ferramenta de paredes no canvas.
+- Persistir segmentos de parede no `world.json`.
+- Bloquear movimento de token quando atravessar parede.
+- Permitir que o mestre force atravessar parede.
+- Controlar visibilidade de paredes para mestre/jogador.
+- Evoluir para iluminacao/visao depois da colisao basica.
 
 ## P5 - Entrega final
 
