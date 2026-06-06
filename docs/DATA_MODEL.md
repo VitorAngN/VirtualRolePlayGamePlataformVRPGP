@@ -82,6 +82,8 @@ Tipos de campo aceitos na 0.1:
 
 `roll_formula` e opcional. Quando preenchido, define uma rolagem segura para aquele campo, por exemplo `1d20 + @str.mod`.
 
+`section` agrupa campos na ficha. No desktop e no mobile, cada secao distinta pode virar uma aba de ficha. Exemplos atuais: `Identidade`, `Combate`, `Atributos`, `Salvaguardas`, `Pericias`, `Acoes`, `Inventario`, `Magias`, `Tracos` e `Notas`.
+
 ## Actor
 
 Representa uma ficha criada dentro de um mundo.
@@ -105,6 +107,7 @@ Regras iniciais:
 - `data` guarda os valores dos campos definidos no manifesto do sistema;
 - campos legados como `hp`, `max_hp`, `ac`, `level`, `class_name` e `notes` podem existir para compatibilidade;
 - a aba de atores renderiza a ficha a partir do manifesto do sistema do mundo.
+- a ficha mobile renderiza abas a partir das secoes dos campos do manifesto.
 - `companion_permissions` guarda permissoes mobile persistidas por jogador/ficha.
 
 Estrutura de `companion_permissions`:

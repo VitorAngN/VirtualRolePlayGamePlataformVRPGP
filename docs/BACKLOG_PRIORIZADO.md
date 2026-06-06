@@ -53,6 +53,8 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - [feito] Permissoes por sessao mobile para ajustar PV e rolar dados.
 - [feito] Rolar campos da ficha mobile usando `roll_formula` do sistema.
 - [feito-base] Editar campos da ficha pelo mobile quando permitido.
+- [feito-base] Alternar ficha mobile entre modo usar e modo editar.
+- [feito-base] Gerar abas da ficha mobile a partir das secoes do sistema.
 - [feito-base] Enviar chat pelo mobile quando permitido.
 - [feito-base] Persistir permissoes mobile por jogador/ficha.
 - Criar codigo de sala local amigavel.
@@ -82,6 +84,7 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - Criar sistema inicial `dnd5e-lite` orientado por JSON, sem executar scripts externos.
 - [feito-base] Criar estrutura real de pacote em `saves/systems/{systemId}/`.
 - [feito-base] Criar modo visual interno para montar sistema por templates e campos.
+- [feito-base] Criador visual de sistema com secoes/predefinicoes que viram abas da ficha.
 - [feito-base] Criar validador de manifesto de sistema.
 - [feito-base] Criar motor seguro de formulas declarativas.
 - Fazer ficha D&D Lite ser renderizada por manifesto, nao por campos hardcoded.
@@ -106,6 +109,7 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - Companion mobile conectado por token a ficha real do mundo local.
 - Companion mobile com WebSocket para receber ficha/chat vivos.
 - Companion mobile com edicao de campos e envio de chat controlados por permissao.
+- Companion mobile com abas de ficha geradas pelo sistema e alternancia entre usar/editar.
 - Modo programa local com Electron.
 - Storage local em `saves/`.
 - Backend Go inicial mantido como base opcional/futura.

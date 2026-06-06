@@ -31,6 +31,8 @@ O usuario nao precisa escrever JSON para comecar. O launcher possui um criador v
 
 Cada campo da ficha pode ter uma formula opcional em `roll_formula`. Quando essa formula existe, o companion mobile pode transformar o campo em botao de rolagem, desde que a sessao tenha permissao de rolar dados.
 
+Cada campo tambem possui uma `section`. Na versao atual, as secoes viram abas da ficha no desktop/mobile. Isso permite que um sistema criado visualmente tenha abas como `Identidade`, `Combate`, `Atributos`, `Inventario`, `Magias`, `Tracos` e `Notas` sem escrever codigo.
+
 Templates iniciais:
 
 - `D&D 5e Lite`: base d20 com atributos, PV, CA, salvaguardas e pericias;
@@ -128,6 +130,8 @@ O modo ativo e o modo editavel usam a mesma tela:
 - no modo ativo, clicar em atributo/pericia/salvaguarda executa a rolagem;
 - no modo editavel, os mesmos blocos viram campos editaveis no proprio lugar;
 - dados livres, como notas, idiomas, sentidos e resistencias, podem ser editados diretamente nos blocos.
+
+No companion mobile, o mesmo principio se aplica em uma tela estreita: o jogador alterna entre `Usar` e `Editar`, e navega pelas abas que vieram das secoes do manifesto do sistema. O criador visual de sistemas mostra uma previa dessas abas para evitar que a ficha fique um bloco unico enorme.
 
 ## Motor de formulas
 
@@ -248,5 +252,6 @@ Permissoes iniciais:
 10. [feito-base] Criar WebSocket de eventos.
 11. [feito-base] Permitir edicao mobile de campos da ficha via manifesto.
 12. [feito-base] Permitir chat mobile persistido.
-13. Criar import/export de sistema pelo launcher.
-14. Criar conexao externa assistida por tunel.
+13. [feito-base] Gerar abas mobile a partir das secoes dos campos do sistema.
+14. Criar import/export de sistema pelo launcher.
+15. Criar conexao externa assistida por tunel.

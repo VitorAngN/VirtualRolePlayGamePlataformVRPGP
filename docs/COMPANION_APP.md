@@ -47,6 +47,8 @@ O desktop e o host da sessao:
 O mobile envia acoes e recebe estado:
 
 - consultar ficha vinculada;
+- alternar entre modo de uso e modo de edicao quando a sessao permite editar;
+- navegar pelas abas da ficha geradas a partir das secoes dos campos do sistema;
 - rolar dados rapidos quando a sessao permite;
 - rolar campos da ficha que possuem `roll_formula` no manifesto do sistema;
 - ajustar PV quando a sessao permite;
@@ -101,12 +103,16 @@ Eventos previstos:
 ## Interface planejada
 
 - Status: PV, CA, condicoes e recursos principais.
+- Abas: cada valor de `section` nos campos do sistema vira uma aba mobile, por exemplo `Identidade`, `Combate`, `Atributos`, `Inventario`, `Magias` e `Notas`.
+- Modo usar: campos com `roll_formula` funcionam como botoes de rolagem.
+- Modo editar: a mesma ficha permite editar os valores no lugar, sem trocar para outro formulario.
 - Acoes: ataques, testes, magias e itens favoritos.
 - Dados: teclado de d4, d6, d8, d10, d12, d20 e d100.
 - Chat: mensagens e historico de rolagens.
 
 ## Proximos passos
 
-- Melhorar a UI mobile da edicao de ficha.
+- Separar inventario/itens como entidades reais do sistema, e nao apenas campos de texto.
+- Permitir que cada sistema defina layouts mais ricos de ficha alem das secoes basicas.
 - Definir permissao por usuario permanente quando existir login/usuarios do mundo.
 - Projetar acesso externo assistido, sem depender de configuracao manual de roteador.

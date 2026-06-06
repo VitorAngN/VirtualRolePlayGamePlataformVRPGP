@@ -52,6 +52,18 @@ const JOIN_THEMES = [
 ]
 
 const FIELD_TYPES: SystemFieldType[] = ['text', 'number', 'textarea', 'checkbox']
+const SYSTEM_SECTION_PRESETS = [
+  'Identidade',
+  'Combate',
+  'Atributos',
+  'Salvaguardas',
+  'Pericias',
+  'Acoes',
+  'Inventario',
+  'Magias',
+  'Tracos',
+  'Notas',
+]
 
 const DEFAULT_ACTOR_FIELDS: ApiSystemField[] = [
   { id: 'level', label: 'Nivel', type: 'number', section: 'Identidade', default_value: 1 },
@@ -94,9 +106,23 @@ const DEFAULT_ACTOR_FIELDS: ApiSystemField[] = [
   { id: 'skill_sleight_of_hand_prof', label: 'Prof. Prestidigitacao', type: 'checkbox', section: 'Pericias', default_value: false },
   { id: 'skill_stealth_prof', label: 'Prof. Furtividade', type: 'checkbox', section: 'Pericias', default_value: false },
   { id: 'skill_survival_prof', label: 'Prof. Sobrevivencia', type: 'checkbox', section: 'Pericias', default_value: false },
-  { id: 'senses', label: 'Sentidos', type: 'text', section: 'Traits', default_value: '' },
-  { id: 'languages', label: 'Idiomas', type: 'text', section: 'Traits', default_value: '' },
-  { id: 'resistances', label: 'Resistencias', type: 'text', section: 'Traits', default_value: '' },
+  { id: 'initiative_bonus', label: 'Bonus de iniciativa', type: 'number', section: 'Acoes', default_value: 0, roll_formula: '1d20 + @dex.mod + @initiative_bonus' },
+  { id: 'attack_bonus', label: 'Bonus de ataque', type: 'number', section: 'Acoes', default_value: 0, roll_formula: '1d20 + @attack_bonus' },
+  { id: 'damage_formula', label: 'Formula de dano padrao', type: 'text', section: 'Acoes', default_value: '1d8' },
+  { id: 'actions', label: 'Acoes e ataques', type: 'textarea', section: 'Acoes', default_value: '' },
+  { id: 'currency', label: 'Moedas/recursos', type: 'text', section: 'Inventario', default_value: '' },
+  { id: 'equipment', label: 'Equipamentos', type: 'textarea', section: 'Inventario', default_value: '' },
+  { id: 'inventory', label: 'Inventario geral', type: 'textarea', section: 'Inventario', default_value: '' },
+  { id: 'spellcasting_ability', label: 'Atributo de conjuracao', type: 'text', section: 'Magias', default_value: '' },
+  { id: 'spell_attack_bonus', label: 'Bonus de ataque magico', type: 'number', section: 'Magias', default_value: 0, roll_formula: '1d20 + @spell_attack_bonus' },
+  { id: 'spell_save_dc', label: 'CD de magia', type: 'number', section: 'Magias', default_value: 10 },
+  { id: 'spells', label: 'Magias conhecidas/preparadas', type: 'textarea', section: 'Magias', default_value: '' },
+  { id: 'senses', label: 'Sentidos', type: 'text', section: 'Tracos', default_value: '' },
+  { id: 'languages', label: 'Idiomas', type: 'text', section: 'Tracos', default_value: '' },
+  { id: 'resistances', label: 'Resistencias', type: 'text', section: 'Tracos', default_value: '' },
+  { id: 'features', label: 'Caracteristicas e talentos', type: 'textarea', section: 'Tracos', default_value: '' },
+  { id: 'personality', label: 'Personalidade', type: 'textarea', section: 'Notas', default_value: '' },
+  { id: 'appearance', label: 'Aparencia', type: 'textarea', section: 'Notas', default_value: '' },
   { id: 'notes', label: 'Notas', type: 'textarea', section: 'Notas', default_value: '' },
 ]
 
@@ -166,6 +192,10 @@ function parseDefaultValue(type: SystemFieldType, value: unknown) {
 
 function cloneActorFields(fields: ApiSystemField[] = []) {
   return fields.map(field => ({ ...field }))
+}
+
+function sectionNames(fields: ApiSystemField[]) {
+  return Array.from(new Set(fields.map(field => String(field.section || 'Basico').trim() || 'Basico')))
 }
 
 function normalizeActorFields(fields: ApiSystemField[]) {
@@ -672,6 +702,7 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
       : status === 'offline'
         ? 'Nao consegui acessar os sistemas locais agora.'
         : formatLocalCount(systems.length, 'sistema', 'sistemas')
+  const systemSectionPreview = sectionNames(systemForm.actorFields)
 
   if (selectedWorld && modal !== 'editWorld') {
     return (
@@ -1257,12 +1288,25 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
                 <div className={styles.fieldBuilderHeader}>
                   <div>
                     <span className={styles.formLabel}>Campos da ficha</span>
-                    <p>Estes campos vao para o `system.json` e aparecem na ficha desse tipo de ator.</p>
+                    <p>Estes campos vao para o `system.json`; cada secao vira uma aba da ficha no mobile.</p>
                   </div>
                   <button className={styles.systemActionBtn} type="button" onClick={addSystemField}>
                     Adicionar campo
                   </button>
                 </div>
+                <div className={styles.sectionPreview}>
+                  <span>Abas geradas</span>
+                  <div>
+                    {systemSectionPreview.map(section => (
+                      <strong key={section}>{section}</strong>
+                    ))}
+                  </div>
+                </div>
+                <datalist id="system-section-presets">
+                  {SYSTEM_SECTION_PRESETS.map(section => (
+                    <option key={section} value={section} />
+                  ))}
+                </datalist>
                 <div className={styles.fieldBuilderRows}>
                   {systemForm.actorFields.map((field, index) => (
                     <div className={styles.fieldBuilderRow} key={`${field.id}-${index}`}>
@@ -1321,6 +1365,7 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
                         <span>Secao</span>
                         <input
                           className={styles.formInput}
+                          list="system-section-presets"
                           value={field.section}
                           onChange={event => updateSystemField(index, { section: event.target.value })}
                         />

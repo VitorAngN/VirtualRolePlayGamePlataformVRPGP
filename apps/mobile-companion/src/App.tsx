@@ -129,6 +129,7 @@ type CompanionSocketMessage =
   | { type: 'error'; error: string };
 
 type ConnectionState = 'connecting' | 'live' | 'fallback';
+type SheetMode = 'use' | 'edit';
 
 const statusFieldIds = ['hp', 'max_hp', 'ac', 'level', 'class_name', 'ancestry'];
 const quickDice = [4, 6, 8, 10, 12, 20, 100];
@@ -495,6 +496,15 @@ function ConnectedSheet({
   const isBusy = Boolean(pendingAction);
   const permissions = normalizePermissions(session.permissions);
   const [chatDraft, setChatDraft] = useState('');
+  const [sheetMode, setSheetMode] = useState<SheetMode>('use');
+  const [selectedSection, setSelectedSection] = useState('');
+  const activeSection = selectedSection === '__chat' && permissions.chat
+    ? '__chat'
+    : sections.some(section => section.section === selectedSection)
+    ? selectedSection
+    : sections[0]?.section || '';
+  const activeSectionFields = activeSection === '__chat' ? [] : sections.find(section => section.section === activeSection)?.fields || [];
+  const canEditFields = permissions.patch_actor && sheetMode === 'edit';
 
   function handleSendChat(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -576,6 +586,57 @@ function ConnectedSheet({
         </header>
 
         <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-4">
+          <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-white/10 bg-[#0b0c0f]/95 px-4 pb-3 backdrop-blur">
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {sections.map(section => (
+                <button
+                  className={section.section === activeSection
+                    ? 'shrink-0 rounded-full border border-[#d99a3d]/50 bg-[#d99a3d] px-3 py-2 text-xs font-black text-black'
+                    : 'shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black text-zinc-400'}
+                  key={section.section}
+                  onClick={() => setSelectedSection(section.section)}
+                  type="button"
+                >
+                  {section.section}
+                </button>
+              ))}
+              {permissions.chat && (
+                <button
+                  className={activeSection === '__chat'
+                    ? 'shrink-0 rounded-full border border-[#7fb9ad]/60 bg-[#7fb9ad] px-3 py-2 text-xs font-black text-black'
+                    : 'shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black text-zinc-400'}
+                  onClick={() => setSelectedSection('__chat')}
+                  type="button"
+                >
+                  Chat
+                </button>
+              )}
+            </div>
+
+            {permissions.patch_actor && (
+              <div className="grid grid-cols-2 rounded-xl border border-white/10 bg-black/30 p-1">
+                <button
+                  className={sheetMode === 'use'
+                    ? 'min-h-9 rounded-lg bg-[#f8ead0] text-xs font-black text-black'
+                    : 'min-h-9 rounded-lg text-xs font-black text-zinc-500'}
+                  onClick={() => setSheetMode('use')}
+                  type="button"
+                >
+                  Usar
+                </button>
+                <button
+                  className={sheetMode === 'edit'
+                    ? 'min-h-9 rounded-lg bg-[#d99a3d] text-xs font-black text-black'
+                    : 'min-h-9 rounded-lg text-xs font-black text-zinc-500'}
+                  onClick={() => setSheetMode('edit')}
+                  type="button"
+                >
+                  Editar
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="mb-4 grid grid-cols-3 gap-2">
             <StatBox label="CA" value={ac} />
             <StatBox label="Nivel" value={level} />
@@ -614,29 +675,32 @@ function ConnectedSheet({
             </section>
           )}
 
-          <div className="grid gap-4">
-            {sections.map(section => (
-              <section className="rounded-xl border border-white/10 bg-white/[0.035] p-3" key={section.section}>
-                <h2 className="mb-3 text-[10px] font-black uppercase tracking-[0.22em] text-[#d99a3d]">{section.section}</h2>
-                <div className="grid gap-2">
-                  {section.fields.map(field => (
-                    <FieldRow
-                      actor={actor}
-                      canEdit={permissions.patch_actor}
-                      canRoll={permissions.roll && Boolean(field.roll_formula)}
-                      field={field}
-                      key={`${field.id}:${String(valueFor(actor, field))}`}
-                      onPatchField={value => onPatchField(field, value)}
-                      onRollField={() => onRollField(field)}
-                      pending={isBusy}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
+          {activeSection !== '__chat' && activeSectionFields.length > 0 && (
+            <section className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-[10px] font-black uppercase tracking-[0.22em] text-[#d99a3d]">{activeSection}</h2>
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-600">
+                  {canEditFields ? 'Editando' : 'Uso'}
+                </span>
+              </div>
+              <div className="grid gap-2">
+                {activeSectionFields.map(field => (
+                  <FieldRow
+                    actor={actor}
+                    canEdit={canEditFields}
+                    canRoll={permissions.roll && sheetMode === 'use' && Boolean(field.roll_formula)}
+                    field={field}
+                    key={`${field.id}:${String(valueFor(actor, field))}:${sheetMode}`}
+                    onPatchField={value => onPatchField(field, value)}
+                    onRollField={() => onRollField(field)}
+                    pending={isBusy}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
 
-          {permissions.chat && (
+          {permissions.chat && activeSection === '__chat' && (
             <section className="mt-4 rounded-xl border border-white/10 bg-white/[0.035] p-3">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-[10px] font-black uppercase tracking-[0.22em] text-[#7fb9ad]">Chat</h2>
