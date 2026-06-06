@@ -29,6 +29,8 @@ Nao vamos executar JavaScript livre na 0.1. Isso evita uma camada perigosa e dif
 
 O usuario nao precisa escrever JSON para comecar. O launcher possui um criador visual de sistemas que aplica templates, permite adicionar/remover campos e grava o `system.json` automaticamente. O JSON continua sendo o formato interno e o modo avancado de edicao.
 
+Cada campo da ficha pode ter uma formula opcional em `roll_formula`. Quando essa formula existe, o companion mobile pode transformar o campo em botao de rolagem, desde que a sessao tenha permissao de rolar dados.
+
 Templates iniciais:
 
 - `D&D 5e Lite`: base d20 com atributos, PV, CA, salvaguardas e pericias;
@@ -84,18 +86,35 @@ O `saves/index.json` mantem a lista resumida de sistemas instalados. Cada pacote
     {
       "id": "character",
       "label": "Personagem",
-      "sheet": "character.sheet.json"
+      "fields": [
+        {
+          "id": "str",
+          "label": "Forca",
+          "type": "number",
+          "section": "Atributos",
+          "default_value": 10,
+          "roll_formula": "1d20 + @str.mod"
+        }
+      ]
     },
     {
       "id": "npc",
       "label": "NPC",
-      "sheet": "npc.sheet.json"
+      "fields": [
+        {
+          "id": "hp",
+          "label": "PV",
+          "type": "number",
+          "section": "Combate",
+          "default_value": 10,
+          "roll_formula": ""
+        }
+      ]
     }
   ],
   "rolls": {
-    "ability_check": "1d20 + @abilities.{ability}.mod",
-    "skill_check": "1d20 + @skills.{skill}.total",
-    "saving_throw": "1d20 + @saves.{ability}.total"
+    "ability_check": "1d20 + @str.mod",
+    "raw_check": "1d20 + @proficiency_bonus"
   }
 }
 ```
@@ -115,8 +134,9 @@ O modo ativo e o modo editavel usam a mesma tela:
 O sistema deve ter um avaliador pequeno e controlado de formulas:
 
 - dados: `1d20`, `2d6`, `1d8+3`;
-- referencias: `@abilities.str.mod`, `@prof`, `@level`;
-- funcoes seguras: `floor`, `ceil`, `min`, `max`;
+- referencias atuais: `@str`, `@hp`, `@proficiency_bonus`;
+- modificadores atuais de atributo d20: `@str.mod`, `@dex.mod`, `@con.mod`, etc.;
+- funcoes seguras como `floor`, `ceil`, `min`, `max` ficam para a proxima etapa;
 - sem acesso a arquivo, rede, Electron, Node ou DOM.
 
 Isso permite sistemas programaveis sem abrir execucao arbitraria.
@@ -140,11 +160,11 @@ O fluxo principal de conexao deve ser:
 
 1. Mestre abre o `VTT Lite.exe`.
 2. Mestre abre um mundo.
-3. Mestre gera um link mobile a partir de uma ficha.
+3. Mestre gera um link mobile a partir de uma ficha e define permissoes da sessao.
 4. Desktop inicia um servidor local embutido.
 5. Celular acessa a URL na rede local.
 6. Mobile consulta a ficha real pelo token.
-7. Na proxima fase, acoes do mobile entram como eventos validados pelo desktop.
+7. Mobile envia eventos de PV/rolagem validados pelo desktop.
 
 Exemplo local:
 
@@ -160,7 +180,7 @@ Na base atual, o servidor embutido serve o build do `apps/mobile-companion` e ex
 - `GET /api/companion/assets/:worldId/:assetId/:filename`
 
 O token fica em memoria no processo Electron e aponta para uma ficha especifica de um mundo especifico.
-Os eventos implementados agora sao `actor.hp.adjust` e `actor.roll`.
+Os eventos implementados agora sao `actor.hp.adjust` e `actor.roll`. O token tambem guarda permissoes como `view_actor`, `adjust_hp`, `roll`, `patch_actor` e `chat`.
 
 ## Rede externa
 
@@ -215,9 +235,9 @@ Permissoes iniciais:
 2. [feito-base] Criar modo interno visual para montar sistema sem programar.
 3. Criar import/export de sistema.
 4. [feito-base] Criar validador de manifesto.
-5. Criar motor de formulas seguro.
+5. [feito-base] Criar motor de formulas seguro para dados, numeros e referencias simples.
 6. Fazer ficha D&D Lite ser renderizada por manifesto, nao hardcoded.
 7. [feito-base] Criar servidor local embutido no desktop.
 8. [feito-base] Criar tela de conexao mobile por token.
-9. Criar QR Code de conexao.
+9. [feito] Criar QR Code de conexao.
 10. Criar WebSocket de eventos.

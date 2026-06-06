@@ -5,7 +5,7 @@ contextBridge.exposeInMainWorld('vttLite', {
   getConfig: () => ipcRenderer.invoke('store:getConfig'),
   companion: {
     getStatus: () => ipcRenderer.invoke('companion:getStatus'),
-    createSession: (worldId, actorId) => ipcRenderer.invoke('companion:createSession', worldId, actorId),
+    createSession: (worldId, actorId, payload) => ipcRenderer.invoke('companion:createSession', worldId, actorId, payload),
     onEvent: callback => {
       const handler = (_event, payload) => callback(payload)
       ipcRenderer.on('companion:event', handler)

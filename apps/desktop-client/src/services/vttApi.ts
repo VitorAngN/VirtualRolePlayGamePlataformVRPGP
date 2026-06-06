@@ -27,6 +27,7 @@ export interface ApiSystemField {
   type: SystemFieldType
   section: string
   default_value: string | number | boolean
+  roll_formula?: string
 }
 
 export interface ApiSystemActorType {
@@ -211,14 +212,29 @@ export interface ApiCompanionStatus {
   urls: string[]
 }
 
+export interface ApiCompanionPermissions {
+  view_actor: boolean
+  adjust_hp: boolean
+  roll: boolean
+  patch_actor: boolean
+  chat: boolean
+}
+
 export interface ApiCompanionSessionLink {
   token: string
   actor_id: string
   actor_name: string
   world_id: string
   world_name: string
+  player_name?: string
+  permissions?: ApiCompanionPermissions
   loopback_url: string
   urls: string[]
+}
+
+export interface CreateCompanionSessionPayload {
+  player_name?: string
+  permissions?: Partial<ApiCompanionPermissions>
 }
 
 export interface UploadAssetPayload {
@@ -303,9 +319,9 @@ export async function getCompanionStatus() {
   throw new Error('Companion mobile exige o modo programa.')
 }
 
-export async function createCompanionSession(worldId: string, actorId: string) {
+export async function createCompanionSession(worldId: string, actorId: string, payload?: CreateCompanionSessionPayload) {
   if (companionApi) {
-    return companionApi.createSession(worldId, actorId)
+    return companionApi.createSession(worldId, actorId, payload)
   }
 
   throw new Error('Companion mobile exige o modo programa.')

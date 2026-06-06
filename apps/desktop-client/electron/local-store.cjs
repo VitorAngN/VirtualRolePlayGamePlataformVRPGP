@@ -75,6 +75,7 @@ function normalizeSystemField(field, index = 0) {
   const type = SYSTEM_FIELD_TYPES.has(field?.type) ? field.type : 'text'
   const label = String(field?.label || field?.name || `Campo ${index + 1}`).trim() || `Campo ${index + 1}`
   const id = fieldId(field?.id || label, `campo_${index + 1}`)
+  const rollFormula = String(field?.roll_formula ?? field?.rollFormula ?? '').trim()
 
   return {
     id,
@@ -82,6 +83,7 @@ function normalizeSystemField(field, index = 0) {
     type,
     section: String(field?.section || 'Basico').trim() || 'Basico',
     default_value: normalizeDefaultValue(type, field?.default_value ?? field?.defaultValue),
+    roll_formula: rollFormula,
   }
 }
 
@@ -97,12 +99,12 @@ function defaultActorFields() {
     { id: 'temp_hp', label: 'PV temporario', type: 'number', section: 'Combate', default_value: 0 },
     { id: 'ac', label: 'CA', type: 'number', section: 'Combate', default_value: 10 },
     { id: 'speed', label: 'Deslocamento', type: 'number', section: 'Combate', default_value: 9 },
-    { id: 'str', label: 'Forca', type: 'number', section: 'Atributos', default_value: 10 },
-    { id: 'dex', label: 'Destreza', type: 'number', section: 'Atributos', default_value: 10 },
-    { id: 'con', label: 'Constituicao', type: 'number', section: 'Atributos', default_value: 10 },
-    { id: 'int', label: 'Inteligencia', type: 'number', section: 'Atributos', default_value: 10 },
-    { id: 'wis', label: 'Sabedoria', type: 'number', section: 'Atributos', default_value: 10 },
-    { id: 'cha', label: 'Carisma', type: 'number', section: 'Atributos', default_value: 10 },
+    { id: 'str', label: 'Forca', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @str.mod' },
+    { id: 'dex', label: 'Destreza', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @dex.mod' },
+    { id: 'con', label: 'Constituicao', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @con.mod' },
+    { id: 'int', label: 'Inteligencia', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @int.mod' },
+    { id: 'wis', label: 'Sabedoria', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @wis.mod' },
+    { id: 'cha', label: 'Carisma', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @cha.mod' },
     { id: 'save_str_prof', label: 'Prof. teste Forca', type: 'checkbox', section: 'Salvaguardas', default_value: false },
     { id: 'save_dex_prof', label: 'Prof. teste Destreza', type: 'checkbox', section: 'Salvaguardas', default_value: false },
     { id: 'save_con_prof', label: 'Prof. teste Constituicao', type: 'checkbox', section: 'Salvaguardas', default_value: false },

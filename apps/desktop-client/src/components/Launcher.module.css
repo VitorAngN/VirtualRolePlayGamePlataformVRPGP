@@ -551,6 +551,11 @@
   padding: 9px 10px;
 }
 
+.formSelect option {
+  background: #f7f2e8;
+  color: #111;
+}
+
 .formTextarea {
   resize: vertical;
   min-height: 80px;
@@ -653,7 +658,7 @@
 
 .fieldBuilderRow {
   display: grid;
-  grid-template-columns: minmax(130px, 1.1fr) minmax(110px, 0.9fr) 92px minmax(96px, 0.8fr) minmax(108px, 0.8fr) auto;
+  grid-template-columns: minmax(130px, 1.1fr) minmax(110px, 0.9fr) 92px minmax(96px, 0.8fr) minmax(108px, 0.8fr) minmax(150px, 1fr) auto;
   gap: 8px;
   align-items: end;
   border: 1px solid rgba(255,255,255,0.08);

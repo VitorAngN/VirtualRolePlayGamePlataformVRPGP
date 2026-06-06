@@ -65,7 +65,8 @@ Estrutura inicial de `actor_types`:
         "label": "PV atual",
         "type": "number",
         "section": "Combate",
-        "default_value": 10
+        "default_value": 10,
+        "roll_formula": ""
       }
     ]
   }
@@ -78,6 +79,8 @@ Tipos de campo aceitos na 0.1:
 - `number`
 - `textarea`
 - `checkbox`
+
+`roll_formula` e opcional. Quando preenchido, define uma rolagem segura para aquele campo, por exemplo `1d20 + @str.mod`.
 
 ## Actor
 
@@ -187,6 +190,26 @@ Campos principais:
 - `created_at`
 
 Na 0.1, ainda nao existe autenticacao real.
+
+## CompanionSession
+
+Representa uma conexao temporaria de celular criada pelo desktop.
+
+Campos principais:
+
+- `token`
+- `world_id`
+- `actor_id`
+- `player_name`
+- `permissions`
+- `created_at`
+
+Regras iniciais:
+
+- fica em memoria no processo Electron;
+- aponta para uma unica ficha;
+- nao edita o save diretamente;
+- permissoes atuais: `view_actor`, `adjust_hp`, `roll`, `patch_actor` e `chat`.
 
 ## ChatMessage
 

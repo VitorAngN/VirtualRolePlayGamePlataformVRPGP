@@ -8,6 +8,13 @@ const path = require('node:path')
 const DEFAULT_PORT = 5188
 const MAX_PORT_ATTEMPTS = 20
 const MAX_EVENT_BODY_BYTES = 64 * 1024
+const DEFAULT_PERMISSIONS = Object.freeze({
+  view_actor: true,
+  adjust_hp: true,
+  roll: true,
+  patch_actor: false,
+  chat: false,
+})
 
 const CONTENT_TYPES = {
   '.css': 'text/css; charset=utf-8',
@@ -25,7 +32,7 @@ function json(res, status, payload) {
   res.writeHead(status, {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(body),
   })
@@ -65,20 +72,98 @@ function rollDie(sides) {
   return Math.floor(Math.random() * sides) + 1
 }
 
-function rollFormula(formula) {
-  const match = String(formula || '').trim().match(/^(\d+)d(\d+)([+-]\d+)?$/)
-  if (!match) throw new Error('Formula de dado invalida.')
+function normalizePermissions(permissions = {}) {
+  const normalized = { ...DEFAULT_PERMISSIONS }
+  for (const key of Object.keys(DEFAULT_PERMISSIONS)) {
+    if (Object.prototype.hasOwnProperty.call(permissions, key)) {
+      normalized[key] = Boolean(permissions[key])
+    }
+  }
+  normalized.view_actor = true
+  return normalized
+}
 
-  const amount = Number(match[1])
-  const sides = Number(match[2])
-  const modifier = Number(match[3] || 0)
-  if (!Number.isInteger(amount) || !Number.isInteger(sides) || amount < 1 || amount > 100 || sides < 2 || sides > 1000) {
-    throw new Error('Formula de dado fora do limite permitido.')
+function assertPermission(session, permission) {
+  if (session.permissions?.[permission] === false) {
+    throw new Error('Esta sessao mobile nao tem permissao para esta acao.')
+  }
+}
+
+function abilityModifier(value) {
+  const score = Number(value)
+  if (!Number.isFinite(score)) return 0
+  return Math.floor((score - 10) / 2)
+}
+
+function actorValue(actor, fieldId, fallback) {
+  if (actor?.data && Object.prototype.hasOwnProperty.call(actor.data, fieldId)) {
+    return actor.data[fieldId]
+  }
+  if (actor && Object.prototype.hasOwnProperty.call(actor, fieldId)) {
+    return actor[fieldId]
+  }
+  return fallback
+}
+
+function resolveActorReference(actor, reference) {
+  const modifierMatch = String(reference).match(/^([a-z0-9_]+)\.mod$/i)
+  if (modifierMatch) {
+    return abilityModifier(actorValue(actor, modifierMatch[1], 10))
   }
 
-  const rolls = Array.from({ length: amount }, () => rollDie(sides))
+  const value = actorValue(actor, reference, 0)
+  if (typeof value === 'boolean') return value ? 1 : 0
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue)) {
+    throw new Error(`Campo "${reference}" nao e numerico para rolagem.`)
+  }
+  return numericValue
+}
+
+function resolveRollFormula(formula, actor) {
+  return String(formula || '1d20')
+    .trim()
+    .replace(/@([a-z0-9_]+(?:\.mod)?)/gi, (_match, reference) => String(resolveActorReference(actor, reference)))
+}
+
+function rollFormula(formula, actor = null) {
+  const resolvedFormula = actor ? resolveRollFormula(formula, actor) : String(formula || '1d20').trim()
+  const compactFormula = resolvedFormula.replace(/\s+/g, '')
+  if (!compactFormula) throw new Error('Formula de dado invalida.')
+
+  const terms = compactFormula.match(/[+-]?[^+-]+/g) || []
+  if (terms.join('') !== compactFormula) throw new Error('Formula de dado invalida.')
+
+  const rolls = []
+  let modifier = 0
+
+  for (const rawTerm of terms) {
+    const sign = rawTerm.startsWith('-') ? -1 : 1
+    const term = rawTerm.replace(/^[+-]/, '')
+    const diceMatch = term.match(/^(\d*)d(\d+)$/i)
+
+    if (diceMatch) {
+      const amount = Number(diceMatch[1] || 1)
+      const sides = Number(diceMatch[2])
+      if (!Number.isInteger(amount) || !Number.isInteger(sides) || amount < 1 || amount > 100 || sides < 2 || sides > 1000) {
+        throw new Error('Formula de dado fora do limite permitido.')
+      }
+
+      for (let index = 0; index < amount; index += 1) {
+        rolls.push(sign * rollDie(sides))
+      }
+      continue
+    }
+
+    const numberValue = Number(term)
+    if (!Number.isFinite(numberValue)) {
+      throw new Error('Formula de dado invalida.')
+    }
+    modifier += sign * numberValue
+  }
+
   return {
-    formula: `${amount}d${sides}${modifier ? `${modifier > 0 ? '+' : ''}${modifier}` : ''}`,
+    formula: compactFormula,
     rolls,
     modifier,
     total: rolls.reduce((sum, value) => sum + value, 0) + modifier,
@@ -118,7 +203,9 @@ function urlForAsset(asset) {
   return `/api/companion/assets/${encodeURIComponent(match[1])}/${encodeURIComponent(match[2])}/${encodeURIComponent(match[3])}`
 }
 
-function serializeSession(snapshot, actorId) {
+function serializeSession(snapshot, sessionOrActorId) {
+  const actorId = typeof sessionOrActorId === 'string' ? sessionOrActorId : sessionOrActorId.actorId
+  const permissions = typeof sessionOrActorId === 'string' ? normalizePermissions() : normalizePermissions(sessionOrActorId.permissions)
   const actor = snapshot.actors.find(item => item.id === actorId)
   if (!actor) throw new Error('Ficha nao encontrada para a sessao mobile.')
 
@@ -136,18 +223,14 @@ function serializeSession(snapshot, actorId) {
     actor,
     actor_type: actorType,
     assets,
+    player: {
+      name: typeof sessionOrActorId === 'string'
+        ? actor.name
+        : String(sessionOrActorId.playerName || actor.name),
+    },
+    permissions,
     connected_at: new Date().toISOString(),
   }
-}
-
-function actorValue(actor, fieldId, fallback) {
-  if (actor?.data && Object.prototype.hasOwnProperty.call(actor.data, fieldId)) {
-    return actor.data[fieldId]
-  }
-  if (actor && Object.prototype.hasOwnProperty.call(actor, fieldId)) {
-    return actor[fieldId]
-  }
-  return fallback
 }
 
 function safeStaticPath(root, pathname) {
@@ -222,7 +305,7 @@ function createCompanionServer({ store, mobileDistDir, preferredPort = DEFAULT_P
 
       try {
         const snapshot = await store.getWorldSnapshot(session.worldId)
-        json(res, 200, serializeSession(snapshot, session.actorId))
+        json(res, 200, serializeSession(snapshot, session))
       } catch (error) {
         json(res, 404, { error: error.message || 'Falha ao carregar ficha.' })
       }
@@ -259,6 +342,7 @@ function createCompanionServer({ store, mobileDistDir, preferredPort = DEFAULT_P
     const payload = body?.payload || {}
 
     if (type === 'actor.hp.adjust') {
+      assertPermission(session, 'adjust_hp')
       const delta = Number(payload.delta)
       if (!Number.isFinite(delta)) throw new Error('Delta de PV invalido.')
 
@@ -284,15 +368,16 @@ function createCompanionServer({ store, mobileDistDir, preferredPort = DEFAULT_P
         actor,
       }
       onEvent(event)
-      return { ok: true, event, session: serializeSession(nextSnapshot, session.actorId) }
+      return { ok: true, event, session: serializeSession(nextSnapshot, session) }
     }
 
     if (type === 'actor.roll') {
+      assertPermission(session, 'roll')
       const label = String(payload.label || 'Rolagem')
-      const roll = rollFormula(payload.formula || '1d20')
       const snapshot = await store.getWorldSnapshot(session.worldId)
       const actor = snapshot.actors.find(item => item.id === session.actorId)
       if (!actor) throw new Error('Ficha nao encontrada.')
+      const roll = rollFormula(payload.formula || '1d20', actor)
 
       const message = await store.createMessage(session.worldId, {
         speaker: actor.name,
@@ -310,7 +395,7 @@ function createCompanionServer({ store, mobileDistDir, preferredPort = DEFAULT_P
         message,
       }
       onEvent(event)
-      return { ok: true, event, session: serializeSession(nextSnapshot, session.actorId) }
+      return { ok: true, event, session: serializeSession(nextSnapshot, session) }
     }
 
     throw new Error('Tipo de evento mobile nao suportado.')
@@ -373,16 +458,20 @@ function createCompanionServer({ store, mobileDistDir, preferredPort = DEFAULT_P
     return { running: true, port, urls: baseUrls('').urls.map(url => url.replace('/?', '/')) }
   }
 
-  async function createSession(worldId, actorId) {
+  async function createSession(worldId, actorId, options = {}) {
     await ensureStarted()
     const snapshot = await store.getWorldSnapshot(worldId)
     const actor = snapshot.actors.find(item => item.id === actorId)
     if (!actor) throw new Error('Ficha nao encontrada.')
 
     const token = crypto.randomBytes(18).toString('base64url')
+    const permissions = normalizePermissions(options?.permissions)
+    const playerName = String(options?.player_name || options?.playerName || actor.name).trim() || actor.name
     sessions.set(token, {
       actorId,
       worldId,
+      playerName,
+      permissions,
       createdAt: new Date().toISOString(),
     })
 
@@ -393,6 +482,8 @@ function createCompanionServer({ store, mobileDistDir, preferredPort = DEFAULT_P
       actor_name: actor.name,
       world_id: worldId,
       world_name: snapshot.world.name,
+      player_name: playerName,
+      permissions,
       loopback_url: urls.loopback,
       urls: urls.urls,
     }

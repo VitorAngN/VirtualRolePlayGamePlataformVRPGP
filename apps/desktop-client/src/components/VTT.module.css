@@ -465,6 +465,87 @@
   padding: 16px;
 }
 
+.companionForm {
+  display: grid;
+  gap: 14px;
+}
+
+.companionField {
+  display: grid;
+  gap: 6px;
+}
+
+.companionField span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.companionField input {
+  min-height: 38px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: #0b0b0d;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  padding: 0 10px;
+}
+
+.companionField input:focus {
+  outline: none;
+  border-color: rgba(230,145,56,0.56);
+}
+
+.companionPermissionList {
+  display: grid;
+  gap: 8px;
+}
+
+.companionPermission,
+.companionPermissionLocked {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-secondary);
+  padding: 10px;
+}
+
+.companionPermission input,
+.companionPermissionLocked input {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.companionPermission span,
+.companionPermissionLocked span {
+  display: grid;
+  gap: 3px;
+}
+
+.companionPermission strong,
+.companionPermissionLocked strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.companionPermission small,
+.companionPermissionLocked small {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.companionPermissionLocked {
+  opacity: 0.72;
+}
+
 .companionHint,
 .companionError {
   margin: 0;
@@ -480,6 +561,21 @@
 .companionLinks {
   display: grid;
   gap: 8px;
+}
+
+.companionResult {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.companionQrBox {
+  padding: 8px;
+  border: 1px solid rgba(230,145,56,0.28);
+  border-radius: var(--radius-sm);
+  background: #f8ead0;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.32);
 }
 
 .companionLinks a {
@@ -528,8 +624,24 @@
   color: #111;
 }
 
+.companionPrimary:disabled,
+.companionSecondary:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 .companionSecondary {
   border: 1px solid var(--border-light);
   background: rgba(255,255,255,0.04);
   color: var(--text-primary);
+}
+
+@media (max-width: 720px) {
+  .companionResult {
+    grid-template-columns: 1fr;
+  }
+
+  .companionQrBox {
+    justify-self: center;
+  }
 }

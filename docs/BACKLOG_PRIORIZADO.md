@@ -44,12 +44,14 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - [feito] Persistir mundos, cenas, assets e tokens em storage local do programa.
 - [feito-base] Definir servidor local embutido no desktop para hospedar o companion mobile.
 - [feito-base] Criar tela de conexao mobile por token/link local.
-- Criar QR Code a partir do link local do companion.
+- [feito] Criar QR Code a partir do link local do companion.
 - Criar servidor WebSocket basico.
 - Conectar desktop ao WebSocket.
 - Conectar mobile ao WebSocket.
-- [feito-base] Enviar rolagem do mobile para o chat do desktop via HTTP local.
-- [feito-base] Enviar alteracao de HP do mobile para o estado da sessao via HTTP local.
+- [feito] Enviar rolagem do mobile para o chat do desktop via HTTP local.
+- [feito] Enviar alteracao de HP do mobile para o estado da sessao via HTTP local.
+- [feito] Permissoes por sessao mobile para ajustar PV e rolar dados.
+- [feito] Rolar campos da ficha mobile usando `roll_formula` do sistema.
 - Criar codigo de sala ou QR Code simulado.
 
 ## P3 - Persistencia
@@ -76,7 +78,7 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - [feito-base] Criar estrutura real de pacote em `saves/systems/{systemId}/`.
 - [feito-base] Criar modo visual interno para montar sistema por templates e campos.
 - [feito-base] Criar validador de manifesto de sistema.
-- Criar motor seguro de formulas declarativas.
+- [feito-base] Criar motor seguro de formulas declarativas.
 - Fazer ficha D&D Lite ser renderizada por manifesto, nao por campos hardcoded.
 
 ## P5 - Entrega final

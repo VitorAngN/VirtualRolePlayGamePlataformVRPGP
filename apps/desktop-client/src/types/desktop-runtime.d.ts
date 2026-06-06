@@ -8,7 +8,11 @@ interface Window {
     }>
     companion?: {
       getStatus: () => Promise<import('../services/vttApi').ApiCompanionStatus>
-      createSession: (worldId: string, actorId: string) => Promise<import('../services/vttApi').ApiCompanionSessionLink>
+      createSession: (
+        worldId: string,
+        actorId: string,
+        payload?: import('../services/vttApi').CreateCompanionSessionPayload
+      ) => Promise<import('../services/vttApi').ApiCompanionSessionLink>
       onEvent: (callback: (event: import('../services/vttApi').ApiCompanionEvent) => void) => () => void
     }
     storage?: {

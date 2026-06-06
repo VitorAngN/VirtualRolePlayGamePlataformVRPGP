@@ -22,14 +22,15 @@ Fluxo implementado:
 
 1. Na aba de atores, clicar em `Celular` em uma ficha existente.
 2. O Electron sobe o servidor local do companion, se ainda nao estiver rodando.
-3. O desktop cria um token temporario em memoria para aquela ficha.
-4. O modal mostra links de rede local e `127.0.0.1`.
-5. O companion abre com `?token=...` e busca `/api/companion/session/:token`.
-6. A ficha mobile renderiza os campos reais do `system.json` e os valores reais do `world.json`.
-7. O mobile envia eventos reais para ajustar PV e rolar dados.
-8. O desktop salva os eventos no `world.json` e atualiza ficha/chat na janela aberta.
+3. O mestre define nome do jogador e permissoes da sessao.
+4. O desktop cria um token temporario em memoria para aquela ficha.
+5. O modal mostra QR Code, links de rede local e `127.0.0.1`.
+6. O companion abre com `?token=...` e busca `/api/companion/session/:token`.
+7. A ficha mobile renderiza os campos reais do `system.json` e os valores reais do `world.json`.
+8. O mobile envia eventos reais para ajustar PV e rolar dados, respeitando permissoes.
+9. O desktop salva os eventos no `world.json` e atualiza ficha/chat na janela aberta.
 
-Ainda nao ha QR Code, permissao por usuario nem WebSocket dedicado. A sincronizacao atual usa HTTP local com eventos enviados ao processo Electron.
+Ainda nao ha WebSocket dedicado. A sincronizacao atual usa HTTP local com eventos enviados ao processo Electron.
 
 ## Papel do desktop
 
@@ -46,9 +47,11 @@ O desktop e o host da sessao:
 O mobile envia acoes e recebe estado:
 
 - consultar ficha vinculada;
-- rolar dados;
-- editar campos permitidos da ficha;
-- enviar mensagem de chat;
+- rolar dados rapidos quando a sessao permite;
+- rolar campos da ficha que possuem `roll_formula` no manifesto do sistema;
+- ajustar PV quando a sessao permite;
+- editar campos permitidos da ficha em fase futura;
+- enviar mensagem de chat em fase futura;
 - receber alteracao de HP, condicao e historico de rolagem.
 
 O mobile nao acessa a pasta de saves e nao edita arquivos locais diretamente.
@@ -61,7 +64,7 @@ Exemplo de URL gerada pelo desktop:
 http://192.168.0.25:5188/?token=session_xyz
 ```
 
-O QR Code deve carregar essa URL. O token identifica a sessao e limita as permissoes.
+O QR Code carrega essa URL. O token identifica a sessao e limita as permissoes.
 
 ## Rede externa
 
@@ -78,10 +81,9 @@ A prioridade e rede local estavel.
 ```json
 {
   "type": "actor.roll",
-  "actor_id": "actor_123",
   "payload": {
-    "roll": "skill_check",
-    "skill": "perception"
+    "label": "Forca",
+    "formula": "1d20 + @str.mod"
   }
 }
 ```
@@ -105,8 +107,6 @@ Eventos previstos:
 
 ## Proximos passos
 
-- Criar QR Code de conexao a partir do link ja gerado.
 - Criar WebSocket/event stream de eventos.
 - Expandir edicao mobile para campos liberados alem de PV.
-- Transformar rolagens de campos da ficha em formulas do sistema.
-- Definir permissao por jogador/ficha.
+- Criar tela de permissoes persistentes por jogador, nao apenas por token de sessao.

@@ -64,12 +64,12 @@ const DEFAULT_ACTOR_FIELDS: ApiSystemField[] = [
   { id: 'temp_hp', label: 'PV temporario', type: 'number', section: 'Combate', default_value: 0 },
   { id: 'ac', label: 'CA', type: 'number', section: 'Combate', default_value: 10 },
   { id: 'speed', label: 'Deslocamento', type: 'number', section: 'Combate', default_value: 9 },
-  { id: 'str', label: 'Forca', type: 'number', section: 'Atributos', default_value: 10 },
-  { id: 'dex', label: 'Destreza', type: 'number', section: 'Atributos', default_value: 10 },
-  { id: 'con', label: 'Constituicao', type: 'number', section: 'Atributos', default_value: 10 },
-  { id: 'int', label: 'Inteligencia', type: 'number', section: 'Atributos', default_value: 10 },
-  { id: 'wis', label: 'Sabedoria', type: 'number', section: 'Atributos', default_value: 10 },
-  { id: 'cha', label: 'Carisma', type: 'number', section: 'Atributos', default_value: 10 },
+  { id: 'str', label: 'Forca', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @str.mod' },
+  { id: 'dex', label: 'Destreza', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @dex.mod' },
+  { id: 'con', label: 'Constituicao', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @con.mod' },
+  { id: 'int', label: 'Inteligencia', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @int.mod' },
+  { id: 'wis', label: 'Sabedoria', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @wis.mod' },
+  { id: 'cha', label: 'Carisma', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @cha.mod' },
   { id: 'save_str_prof', label: 'Prof. teste Forca', type: 'checkbox', section: 'Salvaguardas', default_value: false },
   { id: 'save_dex_prof', label: 'Prof. teste Destreza', type: 'checkbox', section: 'Salvaguardas', default_value: false },
   { id: 'save_con_prof', label: 'Prof. teste Constituicao', type: 'checkbox', section: 'Salvaguardas', default_value: false },
@@ -180,6 +180,7 @@ function normalizeActorFields(fields: ApiSystemField[]) {
         type,
         section: String(field.section || 'Basico').trim() || 'Basico',
         default_value: parseDefaultValue(type, field.default_value),
+        roll_formula: String(field.roll_formula || '').trim(),
       }
     })
 }
@@ -201,6 +202,7 @@ function newSystemField(index: number): ApiSystemField {
     type: 'text',
     section: 'Basico',
     default_value: '',
+    roll_formula: '',
   }
 }
 
@@ -1321,6 +1323,15 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
                           className={styles.formInput}
                           value={field.section}
                           onChange={event => updateSystemField(index, { section: event.target.value })}
+                        />
+                      </label>
+                      <label>
+                        <span>Rolagem</span>
+                        <input
+                          className={styles.formInput}
+                          value={field.roll_formula || ''}
+                          onChange={event => updateSystemField(index, { roll_formula: event.target.value })}
+                          placeholder="1d20 + @campo.mod"
                         />
                       </label>
                       <button

@@ -76,7 +76,7 @@ function registerIpc() {
   ipcMain.handle('store:uploadAsset', async (_event, payload) => store.uploadAsset(payload))
   ipcMain.handle('store:deleteAsset', async (_event, assetId) => store.deleteAsset(assetId))
   ipcMain.handle('companion:getStatus', async () => companionServer.getStatus())
-  ipcMain.handle('companion:createSession', async (_event, worldId, actorId) => companionServer.createSession(worldId, actorId))
+  ipcMain.handle('companion:createSession', async (_event, worldId, actorId, payload) => companionServer.createSession(worldId, actorId, payload))
 }
 
 function registerAssetProtocol() {

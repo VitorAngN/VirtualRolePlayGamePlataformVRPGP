@@ -17,6 +17,7 @@ interface ApiSystemField {
   type: SystemFieldType;
   section: string;
   default_value: string | number | boolean;
+  roll_formula?: string;
 }
 
 interface ApiSystemActorType {
@@ -68,7 +69,19 @@ interface CompanionSession {
   actor: ApiActor;
   actor_type: ApiSystemActorType | null;
   assets: ApiAsset[];
+  player?: {
+    name: string;
+  };
+  permissions?: CompanionPermissions;
   connected_at: string;
+}
+
+interface CompanionPermissions {
+  view_actor: boolean;
+  adjust_hp: boolean;
+  roll: boolean;
+  patch_actor: boolean;
+  chat: boolean;
 }
 
 interface CompanionEventResponse {
@@ -79,6 +92,13 @@ interface CompanionEventResponse {
 
 const statusFieldIds = ['hp', 'max_hp', 'ac', 'level', 'class_name', 'ancestry'];
 const quickDice = [4, 6, 8, 10, 12, 20, 100];
+const defaultPermissions: CompanionPermissions = {
+  view_actor: true,
+  adjust_hp: true,
+  roll: true,
+  patch_actor: false,
+  chat: false,
+};
 
 function getInitialToken() {
   return new URLSearchParams(window.location.search).get('token')?.trim() || '';
@@ -137,6 +157,14 @@ function groupFields(fields: ApiSystemField[]) {
     section,
     fields: sectionFields,
   }));
+}
+
+function normalizePermissions(permissions?: Partial<CompanionPermissions>) {
+  return {
+    ...defaultPermissions,
+    ...(permissions || {}),
+    view_actor: true,
+  };
 }
 
 function App() {
@@ -284,6 +312,7 @@ function App() {
       actionError={actionError}
       onAdjustHp={delta => sendCompanionEvent('actor.hp.adjust', { delta })}
       onRollDie={sides => sendCompanionEvent('actor.roll', { label: `d${sides}`, formula: `1d${sides}` })}
+      onRollField={field => sendCompanionEvent('actor.roll', { label: field.label, formula: field.roll_formula || '1d20' })}
       pendingAction={pendingAction}
       session={session}
     />
@@ -314,12 +343,14 @@ function ConnectedSheet({
   actionError,
   onAdjustHp,
   onRollDie,
+  onRollField,
   pendingAction,
   session,
 }: {
   actionError: string;
   onAdjustHp: (delta: number) => void;
   onRollDie: (sides: number) => void;
+  onRollField: (field: ApiSystemField) => void;
   pendingAction: string;
   session: CompanionSession;
 }) {
@@ -338,6 +369,7 @@ function ConnectedSheet({
   const className = stringValue(actor, 'class_name', actorType?.label || actor.type);
   const ancestry = stringValue(actor, 'ancestry', '');
   const isBusy = Boolean(pendingAction);
+  const permissions = normalizePermissions(session.permissions);
 
   return (
     <Shell>
@@ -362,6 +394,11 @@ function ConnectedSheet({
               <p className="mt-2 truncate text-xs font-semibold text-zinc-400">
                 {className}{ancestry ? ` - ${ancestry}` : ''} - nivel {level}
               </p>
+              {session.player?.name && (
+                <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-600">
+                  Sessao: {session.player.name}
+                </p>
+              )}
             </div>
 
             <div className="rounded-lg border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-200">
@@ -390,12 +427,18 @@ function ConnectedSheet({
               />
             </div>
 
-            <div className="mt-3 grid grid-cols-4 gap-2">
-              <QuickButton disabled={isBusy} label="-5" tone="danger" onClick={() => onAdjustHp(-5)} />
-              <QuickButton disabled={isBusy} label="-1" tone="danger" onClick={() => onAdjustHp(-1)} />
-              <QuickButton disabled={isBusy} label="+1" tone="heal" onClick={() => onAdjustHp(1)} />
-              <QuickButton disabled={isBusy} label="+5" tone="heal" onClick={() => onAdjustHp(5)} />
-            </div>
+            {permissions.adjust_hp ? (
+              <div className="mt-3 grid grid-cols-4 gap-2">
+                <QuickButton disabled={isBusy} label="-5" tone="danger" onClick={() => onAdjustHp(-5)} />
+                <QuickButton disabled={isBusy} label="-1" tone="danger" onClick={() => onAdjustHp(-1)} />
+                <QuickButton disabled={isBusy} label="+1" tone="heal" onClick={() => onAdjustHp(1)} />
+                <QuickButton disabled={isBusy} label="+5" tone="heal" onClick={() => onAdjustHp(5)} />
+              </div>
+            ) : (
+              <p className="mt-3 rounded-lg border border-white/10 bg-black/24 p-3 text-xs font-semibold text-zinc-500">
+                Esta sessao pode visualizar PV, mas nao pode alterar.
+              </p>
+            )}
           </section>
         </header>
 
@@ -410,22 +453,24 @@ function ConnectedSheet({
             <p className="mb-4 rounded-lg border border-[#ff786d]/25 bg-[#311512] p-3 text-sm text-[#ffb0a6]">{actionError}</p>
           )}
 
-          <section className="mb-4 rounded-xl border border-white/10 bg-white/[0.035] p-3">
-            <h2 className="mb-3 text-[10px] font-black uppercase tracking-[0.22em] text-[#7fb9ad]">Rolagem rapida</h2>
-            <div className="grid grid-cols-7 gap-2">
-              {quickDice.map(sides => (
-                <button
-                  className="min-h-11 rounded-lg border border-white/10 bg-black/28 text-xs font-black text-[#f8ead0] disabled:cursor-wait disabled:opacity-45"
-                  disabled={isBusy}
-                  key={sides}
-                  onClick={() => onRollDie(sides)}
-                  type="button"
-                >
-                  d{sides}
-                </button>
-              ))}
-            </div>
-          </section>
+          {permissions.roll && (
+            <section className="mb-4 rounded-xl border border-white/10 bg-white/[0.035] p-3">
+              <h2 className="mb-3 text-[10px] font-black uppercase tracking-[0.22em] text-[#7fb9ad]">Rolagem rapida</h2>
+              <div className="grid grid-cols-7 gap-2">
+                {quickDice.map(sides => (
+                  <button
+                    className="min-h-11 rounded-lg border border-white/10 bg-black/28 text-xs font-black text-[#f8ead0] disabled:cursor-wait disabled:opacity-45"
+                    disabled={isBusy}
+                    key={sides}
+                    onClick={() => onRollDie(sides)}
+                    type="button"
+                  >
+                    d{sides}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
 
           {sections.length === 0 && (
             <section className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
@@ -444,8 +489,11 @@ function ConnectedSheet({
                   {section.fields.map(field => (
                     <FieldRow
                       actor={actor}
+                      canRoll={permissions.roll && Boolean(field.roll_formula)}
                       field={field}
                       key={field.id}
+                      onRollField={() => onRollField(field)}
+                      pending={isBusy}
                     />
                   ))}
                 </div>
@@ -458,7 +506,19 @@ function ConnectedSheet({
   );
 }
 
-function FieldRow({ actor, field }: { actor: ApiActor; field: ApiSystemField }) {
+function FieldRow({
+  actor,
+  canRoll,
+  field,
+  onRollField,
+  pending,
+}: {
+  actor: ApiActor;
+  canRoll: boolean;
+  field: ApiSystemField;
+  onRollField: () => void;
+  pending: boolean;
+}) {
   const isStatus = statusFieldIds.includes(field.id);
   const value = fieldDisplayValue(actor, field);
 
@@ -469,13 +529,27 @@ function FieldRow({ actor, field }: { actor: ApiActor; field: ApiSystemField }) 
           <h3 className="text-sm font-black text-zinc-100">{field.label}</h3>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-600">{field.id}</p>
         </div>
-        <span className="shrink-0 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-zinc-500">
-          {field.type}
-        </span>
+        {canRoll ? (
+          <button
+            className="shrink-0 rounded-md border border-[#d99a3d]/35 bg-[#d99a3d]/[0.12] px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#f8d99b] disabled:cursor-wait disabled:opacity-45"
+            disabled={pending}
+            onClick={onRollField}
+            type="button"
+          >
+            Rolar
+          </button>
+        ) : (
+          <span className="shrink-0 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-zinc-500">
+            {field.type}
+          </span>
+        )}
       </div>
       <p className={field.type === 'textarea' ? 'mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-300' : 'mt-3 text-xl font-black text-[#f8ead0]'}>
         {value}
       </p>
+      {canRoll && field.roll_formula && (
+        <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#d99a3d]/75">{field.roll_formula}</p>
+      )}
     </article>
   );
 }

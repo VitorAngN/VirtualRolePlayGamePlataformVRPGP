@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type WheelEvent } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
 import { usePanelManager } from '../hooks/usePanelManager'
 import LeftToolbar, { type ToolId } from './LeftToolbar'
 import ChatPanel, { ChatToggleButton } from './ChatPanel'
@@ -30,6 +31,7 @@ import {
   type ApiActor,
   type ApiAsset,
   type ApiChatMessage,
+  type ApiCompanionPermissions,
   type ApiCompanionSessionLink,
   type ApiGameSystem,
   type ApiScene,
@@ -46,6 +48,22 @@ const DEFAULT_SCENE_HEIGHT = 1200
 const DEFAULT_SCENE_PADDING = 0.25
 const MIN_ABSOLUTE_ZOOM = 0.12
 const MAX_ZOOM = 4
+
+const DEFAULT_COMPANION_PERMISSIONS: ApiCompanionPermissions = {
+  view_actor: true,
+  adjust_hp: true,
+  roll: true,
+  patch_actor: false,
+  chat: false,
+}
+
+const COMPANION_PERMISSION_OPTIONS: Array<{ id: keyof ApiCompanionPermissions; label: string; detail: string; locked?: boolean }> = [
+  { id: 'view_actor', label: 'Ver ficha', detail: 'Permite abrir a ficha no celular.', locked: true },
+  { id: 'adjust_hp', label: 'Alterar PV', detail: 'Permite usar os botoes de dano/cura.' },
+  { id: 'roll', label: 'Rolar dados', detail: 'Permite rolagens rapidas e campos com formula.' },
+  { id: 'patch_actor', label: 'Editar ficha', detail: 'Reservado para a proxima etapa.' },
+  { id: 'chat', label: 'Enviar chat', detail: 'Reservado para a proxima etapa.' },
+]
 
 const RIGHT_TABS = [
   { id: 'actors', title: 'Atores', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
@@ -280,6 +298,9 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
   const [openActorSheetId, setOpenActorSheetId] = useState<string | null>(null)
   const [isActorCreateOpen, setIsActorCreateOpen] = useState(false)
   const [companionLink, setCompanionLink] = useState<ApiCompanionSessionLink | null>(null)
+  const [companionActor, setCompanionActor] = useState<ApiActor | null>(null)
+  const [companionPlayerName, setCompanionPlayerName] = useState('')
+  const [companionPermissions, setCompanionPermissions] = useState<ApiCompanionPermissions>(DEFAULT_COMPANION_PERMISSIONS)
   const [companionError, setCompanionError] = useState('')
   const [isCreatingCompanionLink, setIsCreatingCompanionLink] = useState(false)
   const [, setSaveStatus] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -956,13 +977,41 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
     return actor
   }
 
-  async function handleCreateCompanionLink(actor: ApiActor) {
+  function closeCompanionDialog() {
     setCompanionError('')
     setCompanionLink(null)
+    setCompanionActor(null)
+    setCompanionPlayerName('')
+    setCompanionPermissions(DEFAULT_COMPANION_PERMISSIONS)
+    setIsCreatingCompanionLink(false)
+  }
+
+  function handleOpenCompanionDialog(actor: ApiActor) {
+    setCompanionError('')
+    setCompanionLink(null)
+    setCompanionActor(actor)
+    setCompanionPlayerName(actor.name)
+    setCompanionPermissions(DEFAULT_COMPANION_PERMISSIONS)
+  }
+
+  function toggleCompanionPermission(permission: keyof ApiCompanionPermissions) {
+    if (permission === 'view_actor') return
+    setCompanionPermissions(prev => ({
+      ...prev,
+      [permission]: !prev[permission],
+    }))
+  }
+
+  async function handleCreateCompanionLink() {
+    if (!companionActor) return
+    setCompanionError('')
     setIsCreatingCompanionLink(true)
 
     try {
-      const link = await createCompanionSession(worldId, actor.id)
+      const link = await createCompanionSession(worldId, companionActor.id, {
+        player_name: companionPlayerName.trim() || companionActor.name,
+        permissions: companionPermissions,
+      })
       setCompanionLink(link)
       const preferredUrl = preferredCompanionUrl(link)
       await navigator.clipboard?.writeText(preferredUrl).catch(() => undefined)
@@ -975,7 +1024,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
 
   function handleCopyCompanionLinks() {
     if (!companionLink) return
-    const text = companionLink.urls.join('\n')
+    const text = preferredCompanionUrl(companionLink)
     void navigator.clipboard?.writeText(text)
   }
 
@@ -1231,7 +1280,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
           system={system}
           onRequestCreateActor={() => setIsActorCreateOpen(true)}
           onOpenActor={setOpenActorSheetId}
-          onCreateMobileSession={handleCreateCompanionLink}
+          onCreateMobileSession={handleOpenCompanionDialog}
         />
       )}
 
@@ -1254,19 +1303,15 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
         />
       )}
 
-      {(companionLink || companionError || isCreatingCompanionLink) && (
+      {(companionActor || companionLink || companionError || isCreatingCompanionLink) && (
         <div className={styles.companionOverlay} data-map-ui="true">
           <section className={styles.companionDialog} role="dialog" aria-modal="true" aria-label="Companion mobile">
             <div className={styles.companionHeader}>
               <div>
                 <span>Companion mobile</span>
-                <strong>{companionLink?.actor_name || 'Preparando ficha'}</strong>
+                <strong>{companionLink?.actor_name || companionActor?.name || 'Preparando ficha'}</strong>
               </div>
-              <button type="button" onClick={() => {
-                setCompanionLink(null)
-                setCompanionError('')
-                setIsCreatingCompanionLink(false)
-              }}>
+              <button type="button" onClick={closeCompanionDialog}>
                 X
               </button>
             </div>
@@ -1278,17 +1323,61 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
                 <p className={styles.companionError}>{companionError}</p>
               )}
 
+              {companionActor && !companionLink && (
+                <div className={styles.companionForm}>
+                  <label className={styles.companionField}>
+                    <span>Nome do jogador</span>
+                    <input
+                      value={companionPlayerName}
+                      onChange={event => setCompanionPlayerName(event.target.value)}
+                      placeholder={companionActor.name}
+                    />
+                  </label>
+
+                  <div className={styles.companionPermissionList}>
+                    {COMPANION_PERMISSION_OPTIONS.map(permission => (
+                      <label key={permission.id} className={permission.locked ? styles.companionPermissionLocked : styles.companionPermission}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(companionPermissions[permission.id])}
+                          disabled={permission.locked || isCreatingCompanionLink}
+                          onChange={() => toggleCompanionPermission(permission.id)}
+                        />
+                        <span>
+                          <strong>{permission.label}</strong>
+                          <small>{permission.detail}</small>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {companionLink && (
                 <>
-                  <p className={styles.companionHint}>
-                    Abra um destes links no celular conectado na mesma rede. O primeiro link valido ja foi copiado se o sistema permitiu.
-                  </p>
-                  <div className={styles.companionLinks}>
-                    {companionLink.urls.map(url => (
-                      <a key={url} href={url} target="_blank" rel="noreferrer">
-                        {url}
-                      </a>
-                    ))}
+                  <div className={styles.companionResult}>
+                    <div className={styles.companionQrBox}>
+                      <QRCodeSVG
+                        value={preferredCompanionUrl(companionLink)}
+                        size={168}
+                        level="M"
+                        includeMargin
+                        bgColor="#f8ead0"
+                        fgColor="#111113"
+                      />
+                    </div>
+                    <div>
+                      <p className={styles.companionHint}>
+                        Aponte a camera do celular para o QR Code ou abra um link abaixo na mesma rede. O link principal ja foi copiado quando possivel.
+                      </p>
+                      <div className={styles.companionLinks}>
+                        {companionLink.urls.map(url => (
+                          <a key={url} href={url} target="_blank" rel="noreferrer">
+                            {url}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </>
               )}
@@ -1297,14 +1386,15 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
             <div className={styles.companionFooter}>
               {companionLink && (
                 <button type="button" className={styles.companionSecondary} onClick={handleCopyCompanionLinks}>
-                  Copiar links
+                  Copiar link principal
                 </button>
               )}
-              <button type="button" className={styles.companionPrimary} onClick={() => {
-                setCompanionLink(null)
-                setCompanionError('')
-                setIsCreatingCompanionLink(false)
-              }}>
+              {companionActor && !companionLink && (
+                <button type="button" className={styles.companionPrimary} onClick={handleCreateCompanionLink} disabled={isCreatingCompanionLink}>
+                  Gerar link
+                </button>
+              )}
+              <button type="button" className={companionLink ? styles.companionPrimary : styles.companionSecondary} onClick={closeCompanionDialog}>
                 Fechar
               </button>
             </div>
