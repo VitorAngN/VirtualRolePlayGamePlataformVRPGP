@@ -40,6 +40,9 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - Controlar token de personagem na cena com permissao por jogador.
 - Criar pastas/lista melhorada de atores.
 - Diferenciar tipos de ator `Personagem` e `NPC`, com NPC sem link mobile por padrao e controle apenas do mestre.
+- [feito-base] Criar painel real de itens do mundo.
+- [feito-base] Criar, editar, anexar, equipar e apagar item persistido no `world.json`.
+- [feito-base] Mostrar itens anexados dentro da ficha, separados por Inventario/Magias/Tracos.
 
 ## P2 - Integracao desktop + mobile
 
@@ -99,7 +102,12 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - [feito-base] Preview simples das abas da ficha no criador de sistema.
 - [feito-base] Importar/exportar sistemas em JSON pelo launcher.
 - Criar schema de abas/layout do sistema alem do agrupamento simples por `section`.
-- Criar entidades reais de item/inventario/magia/condicao dentro do mundo, consumindo `item_types` do sistema.
+- [feito-base] Criar entidades reais de item/inventario/magia/condicao dentro do mundo, consumindo `item_types` do sistema.
+- [feito-base] Aplicar efeitos simples por convencao `bonus_*` e `armor_class`.
+- Criar compendios locais por sistema para itens prontos.
+- Criar inventario/magias como colecoes com drag/drop, ordenacao, pastas e busca.
+- Criar efeitos/condicoes com regras derivadas mais avancadas que soma numerica simples.
+- Criar editor visual de layout da ficha alem de secoes/abas.
 
 ## P4.5 - Mapa, visao e paredes
 
@@ -143,3 +151,7 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - Cena ativa refletida no HUD do mapa.
 - Sistemas locais com tipos de ator e campos de ficha.
 - Aba de atores renderizada a partir do sistema vinculado ao mundo.
+- Itens reais do mundo persistidos no `world.json`.
+- Painel de itens no desktop com anexar/equipar/apagar.
+- Ficha desktop mostrando itens anexados e rolagens de item.
+- Efeitos simples de itens ativos alterando atributos/CA/bonus.

@@ -8,6 +8,8 @@ import AssetsPanel, { AssetsToggleButton } from './AssetsPanel'
 import ActorsPanel from './ActorsPanel'
 import ActorCreateDialog from './ActorCreateDialog'
 import ActorSheetWindow from './ActorSheetWindow'
+import ItemsPanel from './ItemsPanel'
+import ItemEditDialog from './ItemEditDialog'
 import MacroBar, { type MacroAction } from './MacroBar'
 import type { Scene } from './scenes/types'
 import {
@@ -17,7 +19,9 @@ import {
   createMessage,
   createScene,
   createSceneFolder,
+  createItem,
   deleteAsset,
+  deleteItem,
   deleteMessage,
   deleteScene,
   deleteSceneFolder,
@@ -26,6 +30,7 @@ import {
   onCompanionEvent,
   patchScene,
   patchActor,
+  patchItem,
   patchToken,
   resolveAssetUrl,
   uploadAsset,
@@ -35,10 +40,12 @@ import {
   type ApiCompanionPermissions,
   type ApiCompanionSessionLink,
   type ApiGameSystem,
+  type ApiItem,
   type ApiScene,
   type ApiSceneFolder,
   type ApiToken,
   type CreateActorPayload,
+  type CreateItemPayload,
 } from '../services/vttApi'
 import styles from './VTT.module.css'
 
@@ -340,9 +347,12 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
   const [draggingTokenId, setDraggingTokenId] = useState<string | null>(null)
   const [assets, setAssets] = useState<ApiAsset[]>([])
   const [actors, setActors] = useState<ApiActor[]>([])
+  const [items, setItems] = useState<ApiItem[]>([])
   const [system, setSystem] = useState<ApiGameSystem | null>(null)
   const [openActorSheetId, setOpenActorSheetId] = useState<string | null>(null)
   const [isActorCreateOpen, setIsActorCreateOpen] = useState(false)
+  const [isItemDialogOpen, setIsItemDialogOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<ApiItem | null>(null)
   const [companionLink, setCompanionLink] = useState<ApiCompanionSessionLink | null>(null)
   const [companionActor, setCompanionActor] = useState<ApiActor | null>(null)
   const [companionPlayerName, setCompanionPlayerName] = useState('')
@@ -433,6 +443,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
         setSceneFolders(snapshot.scene_folders ?? [])
         setAssets(snapshot.assets)
         setActors(snapshot.actors ?? [])
+        setItems(snapshot.items ?? [])
         setSystem(snapshot.system ?? null)
         setMessages(snapshot.messages ?? [])
         setActiveScene(nextScene)
@@ -806,6 +817,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
         setSceneFolders(snapshot.scene_folders ?? [])
         setAssets(snapshot.assets)
         setActors(snapshot.actors ?? [])
+        setItems(snapshot.items ?? [])
         setMessages(snapshot.messages ?? [])
         setActiveScene(nextScene)
         tokensRef.current = nextTokens
@@ -1046,6 +1058,47 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
       actor,
     })
     return actor
+  }
+
+  async function handleCreateItem(payload: CreateItemPayload) {
+    const item = await createItem(worldId, payload)
+    setItems(prev => [item, ...prev.filter(existing => existing.id !== item.id)])
+    setEditingItem(item)
+    return item
+  }
+
+  async function handlePatchItem(itemId: string, payload: Partial<ApiItem>) {
+    const item = await patchItem(itemId, payload)
+    setItems(prev => prev.map(existing => (existing.id === item.id ? item : existing)))
+    setEditingItem(prev => (prev?.id === item.id ? item : prev))
+    return item
+  }
+
+  async function handleDeleteItem(item: ApiItem) {
+    setItems(prev => prev.filter(existing => existing.id !== item.id))
+    if (editingItem?.id === item.id) setEditingItem(null)
+    await deleteItem(item.id).catch(error => {
+      setItems(prev => [item, ...prev].sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || ''))))
+      throw error
+    })
+  }
+
+  function requestDeleteItem(item: ApiItem) {
+    const confirmed = window.confirm(`Apagar o item "${item.name}"?`)
+    if (!confirmed) return
+    handleDeleteItem(item).catch(() => {
+      pushActivity('Falha ao apagar item', `${item.name} saiu da tela, mas nao foi removido do disco.`)
+    })
+  }
+
+  function openItemDialog(item: ApiItem | null = null) {
+    setEditingItem(item)
+    setIsItemDialogOpen(true)
+  }
+
+  function closeItemDialog() {
+    setIsItemDialogOpen(false)
+    setEditingItem(null)
   }
 
   function closeCompanionDialog() {
@@ -1291,8 +1344,8 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
             icon={tab.icon}
             isOpen={activePanel === tab.id}
             onClick={() => {
-              if (tab.id === 'actors') {
-                togglePanel('actors')
+              if (tab.id === 'actors' || tab.id === 'items') {
+                togglePanel(tab.id)
                 return
               }
 
@@ -1364,6 +1417,24 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
         />
       )}
 
+      {(activePanel === 'items' || exitingPanel === 'items') && (
+        <ItemsPanel
+          isOpen={activePanel === 'items'}
+          isExiting={exitingPanel === 'items'}
+          items={items}
+          actors={actors}
+          system={system}
+          onRequestCreateItem={() => openItemDialog(null)}
+          onEditItem={item => openItemDialog(item)}
+          onAttachItem={(item, actorId) => {
+            handlePatchItem(item.id, { actor_id: actorId }).catch(() => {
+              pushActivity('Falha ao anexar item', `${item.name} nao foi salvo.`)
+            })
+          }}
+          onDeleteItem={requestDeleteItem}
+        />
+      )}
+
       {isActorCreateOpen && (
         <ActorCreateDialog
           system={system}
@@ -1372,13 +1443,27 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
         />
       )}
 
+      {isItemDialogOpen && (
+        <ItemEditDialog
+          item={editingItem}
+          system={system}
+          actors={actors}
+          onClose={closeItemDialog}
+          onCreateItem={handleCreateItem}
+          onPatchItem={handlePatchItem}
+          onDeleteItem={handleDeleteItem}
+        />
+      )}
+
       {openActorSheetId && actors.find(actor => actor.id === openActorSheetId) && (
         <ActorSheetWindow
           key={openActorSheetId}
           actor={actors.find(actor => actor.id === openActorSheetId)!}
           system={system}
+          items={items}
           onClose={() => setOpenActorSheetId(null)}
           onSave={handlePatchActor}
+          onPatchItem={handlePatchItem}
           onRoll={handleActorSheetRoll}
         />
       )}

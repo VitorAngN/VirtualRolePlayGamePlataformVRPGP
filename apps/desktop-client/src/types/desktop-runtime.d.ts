@@ -41,6 +41,9 @@ interface Window {
       createActor: (worldId: string, payload: import('../services/vttApi').CreateActorPayload) => Promise<import('../services/vttApi').ApiActor>
       patchActor: (actorId: string, patch: Partial<import('../services/vttApi').ApiActor>) => Promise<import('../services/vttApi').ApiActor>
       deleteActor: (actorId: string) => Promise<{ deleted_id: string }>
+      createItem: (worldId: string, payload: import('../services/vttApi').CreateItemPayload) => Promise<import('../services/vttApi').ApiItem>
+      patchItem: (itemId: string, patch: Partial<import('../services/vttApi').ApiItem>) => Promise<import('../services/vttApi').ApiItem>
+      deleteItem: (itemId: string) => Promise<{ deleted_id: string }>
       uploadAsset: (payload: {
         bytes: ArrayBuffer
         filename: string

@@ -183,6 +183,19 @@ export interface ApiActor {
   companion_permissions?: ApiActorCompanionPermission[]
 }
 
+export interface ApiItem {
+  id: string
+  world_id: string
+  actor_id?: string
+  type: string
+  name: string
+  data?: Record<string, string | number | boolean>
+  equipped?: boolean
+  quantity?: number
+  created_at?: string
+  updated_at?: string
+}
+
 export type ApiCompanionEvent =
   | {
       type: 'actor.updated'
@@ -221,6 +234,7 @@ export interface ApiWorldSnapshot {
   scene_folders: ApiSceneFolder[]
   assets: ApiAsset[]
   actors: ApiActor[]
+  items: ApiItem[]
   messages: ApiChatMessage[]
   tokens_by_scene: Record<string, ApiToken[]>
 }
@@ -291,6 +305,15 @@ export interface CreateActorPayload {
   attributes?: Partial<ActorAttributes>
   notes?: string
   portrait_asset_id?: string
+}
+
+export interface CreateItemPayload {
+  name: string
+  type?: string
+  actor_id?: string
+  data?: Record<string, string | number | boolean>
+  equipped?: boolean
+  quantity?: number
 }
 
 export async function getSystems() {
@@ -643,6 +666,30 @@ export async function deleteActor(actorId: string) {
   }
 
   throw new Error('Fichas locais exigem o modo programa.')
+}
+
+export async function createItem(worldId: string, payload: CreateItemPayload) {
+  if (localStorageApi) {
+    return localStorageApi.createItem(worldId, payload)
+  }
+
+  throw new Error('Itens locais exigem o modo programa.')
+}
+
+export async function patchItem(itemId: string, payload: Partial<ApiItem>) {
+  if (localStorageApi) {
+    return localStorageApi.patchItem(itemId, payload)
+  }
+
+  throw new Error('Itens locais exigem o modo programa.')
+}
+
+export async function deleteItem(itemId: string) {
+  if (localStorageApi) {
+    return localStorageApi.deleteItem(itemId)
+  }
+
+  throw new Error('Itens locais exigem o modo programa.')
 }
 
 export async function patchScene(sceneId: string, payload: Partial<ApiScene>) {

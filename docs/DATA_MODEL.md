@@ -45,7 +45,7 @@ Regras iniciais:
 
 - fica salvo como pacote local em `saves/systems/{systemId}/system.json`;
 - `saves/index.json` guarda apenas o resumo do sistema e o caminho do pacote;
-- define manifestos simples de ficha, com tipos de ator e campos;
+- define manifestos simples de ficha, com tipos de ator, tipos de item e campos;
 - nao cria mundo, cena, mapa, token ou ator automaticamente;
 - pode ser vinculado a um mundo no momento da criacao;
 - quando um mundo usa um sistema, o `world.json` tambem guarda o manifesto aplicado;
@@ -105,7 +105,9 @@ Tipos de campo aceitos na 0.1:
 
 `section` agrupa campos na ficha. No desktop e no mobile, cada secao distinta pode virar uma aba de ficha. Exemplos atuais: `Identidade`, `Combate`, `Atributos`, `Salvaguardas`, `Pericias`, `Acoes`, `Inventario`, `Magias`, `Tracos` e `Notas`.
 
-O criador visual de sistemas ja salva multiplos `actor_types` e `item_types`, com import/export de JSON. A criacao de itens reais dentro do mundo ainda deve vir depois e consumir esses tipos de item.
+O criador visual de sistemas ja salva multiplos `actor_types` e `item_types`, com import/export de JSON. Os itens reais criados dentro do mundo consomem esses tipos de item e ficam persistidos em `world.json`.
+
+Campos de item com `roll_formula` viram acoes clicaveis quando o item esta anexado a uma ficha. Campos numericos com prefixo `bonus_` sao tratados como efeitos simples quando o item esta equipado/ativo, por exemplo `bonus_ac`, `bonus_str` ou `bonus_attack_bonus`. O campo `armor_class`, quando usado em uma armadura equipada, define uma CA base minima.
 
 ## Actor
 
@@ -133,6 +135,12 @@ Regras iniciais:
 - a ficha mobile renderiza abas a partir das secoes dos campos do manifesto.
 - `companion_permissions` guarda permissoes mobile persistidas por jogador/ficha.
 
+Itens anexados ao ator aparecem nas abas de ficha:
+
+- armas, armaduras e equipamentos em `Inventario`;
+- magias em `Magias`;
+- condicoes/efeitos em `Tracos`.
+
 Estrutura de `companion_permissions`:
 
 ```json
@@ -150,6 +158,52 @@ Estrutura de `companion_permissions`:
     "updated_at": "2026-06-06T12:00:00.000Z"
   }
 ]
+```
+
+## Item
+
+Representa um documento de item criado dentro de um mundo.
+
+Campos principais:
+
+- `id`
+- `world_id`
+- `actor_id`
+- `type`
+- `name`
+- `data`
+- `equipped`
+- `quantity`
+- `created_at`
+- `updated_at`
+
+Regras iniciais:
+
+- `type` aponta para um tipo definido em `GameSystem.item_types`;
+- `data` guarda os valores dos campos definidos no manifesto do item;
+- `actor_id` e opcional: vazio significa item solto no mundo, preenchido significa item anexado a uma ficha;
+- `equipped` marca se o item esta equipado/ativo para efeitos simples;
+- condicoes sao consideradas ativas quando anexadas, mesmo sem `equipped`;
+- apagar uma ficha solta seus itens de volta para o mundo.
+
+Estrutura exemplo:
+
+```json
+{
+  "id": "item_abc",
+  "world_id": "world_abc",
+  "actor_id": "actor_abc",
+  "type": "weapon",
+  "name": "Espada longa",
+  "quantity": 1,
+  "equipped": true,
+  "data": {
+    "attack_bonus": 5,
+    "damage": "1d8+3",
+    "bonus_attack_bonus": 0,
+    "description": ""
+  }
+}
 ```
 
 ## Scene
@@ -285,6 +339,7 @@ Na 0.1, o chat ja e persistido no `world.json`. Mensagens criadas pelo desktop e
 - cenas;
 - assets;
 - atores;
+- itens;
 - mensagens de chat;
 - tokens agrupados por cena.
 

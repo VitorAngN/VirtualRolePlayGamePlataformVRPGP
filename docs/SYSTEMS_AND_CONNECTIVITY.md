@@ -120,6 +120,29 @@ O `saves/index.json` mantem a lista resumida de sistemas instalados. Cada pacote
       ]
     }
   ],
+  "item_types": [
+    {
+      "id": "weapon",
+      "label": "Arma",
+      "fields": [
+        {
+          "id": "damage",
+          "label": "Dano",
+          "type": "text",
+          "section": "Uso",
+          "default_value": "1d6",
+          "roll_formula": "@damage"
+        },
+        {
+          "id": "bonus_attack_bonus",
+          "label": "Bonus no ataque da ficha",
+          "type": "number",
+          "section": "Efeitos",
+          "default_value": 0
+        }
+      ]
+    }
+  ],
   "rolls": {
     "ability_check": "1d20 + @str.mod",
     "raw_check": "1d20 + @proficiency_bonus"
@@ -151,9 +174,9 @@ O sistema deve ter um avaliador pequeno e controlado de formulas:
 
 Isso permite sistemas programaveis sem abrir execucao arbitraria.
 
-## Itens e compendios
+## Itens, inventario e efeitos
 
-Depois da ficha basica, o sistema deve poder declarar tipos de item:
+O sistema declara tipos de item:
 
 - arma;
 - armadura;
@@ -162,7 +185,22 @@ Depois da ficha basica, o sistema deve poder declarar tipos de item:
 - equipamento;
 - condicao.
 
-Esses itens entram em compendios locais do sistema. O usuario pode arrastar um item para a ficha, e o item altera campos ou cria acoes de rolagem.
+Na base atual, o mundo ja cria documentos reais de item no `world.json`. O usuario pode criar um item pelo painel direito, editar os campos definidos pelo sistema, anexar o item a uma ficha, equipar/guardar e visualizar esse item dentro da janela da ficha.
+
+Mapeamento inicial dentro da ficha:
+
+- armas, armaduras e equipamentos aparecem em `Inventario`;
+- magias aparecem em `Magias`;
+- condicoes/efeitos aparecem em `Tracos`.
+
+Efeitos simples ja existem por convencao declarativa:
+
+- `bonus_ac`, `bonus_str`, `bonus_dex`, `bonus_con`, `bonus_int`, `bonus_wis`, `bonus_cha` somam ao campo correspondente quando o item esta equipado/ativo;
+- `bonus_attack_bonus` soma ao campo `attack_bonus`;
+- `armor_class` em armaduras equipadas define uma CA base minima;
+- campos de item com `roll_formula`, como `@damage`, viram botoes de rolagem na ficha.
+
+Ainda falta transformar inventario, magias e compendios em colecoes mais ricas com drag/drop, pastas, importacao de pacotes e regras derivadas mais completas.
 
 ## Desktop como host
 
@@ -248,10 +286,10 @@ Permissoes iniciais:
 
 1. [feito-base] Separar manifestos de sistema em arquivos/pastas reais.
 2. [feito-base] Criar modo interno visual para montar sistema sem programar.
-3. Criar import/export de sistema.
+3. [feito] Criar import/export de sistema.
 4. [feito-base] Criar validador de manifesto.
 5. [feito-base] Criar motor de formulas seguro para dados, numeros e referencias simples.
-6. Fazer ficha D&D Lite ser renderizada por manifesto, nao hardcoded.
+6. [feito-base] Fazer ficha D&D Lite ser renderizada por manifesto, nao hardcoded.
 7. [feito-base] Criar servidor local embutido no desktop.
 8. [feito-base] Criar tela de conexao mobile por token.
 9. [feito] Criar QR Code de conexao.
@@ -260,4 +298,5 @@ Permissoes iniciais:
 12. [feito-base] Permitir chat mobile persistido.
 13. [feito-base] Gerar abas mobile a partir das secoes dos campos do sistema.
 14. [feito-base] Criar import/export de sistema pelo launcher.
-15. Criar conexao externa assistida por tunel.
+15. [feito-base] Criar entidades reais de item no mundo e anexar itens a ficha.
+16. Criar conexao externa assistida por tunel.

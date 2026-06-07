@@ -2,8 +2,10 @@ import { useMemo, useRef, useState, type FormEvent, type PointerEvent } from 're
 import type {
   ApiActor,
   ApiGameSystem,
+  ApiItem,
   ApiSystemActorType,
   ApiSystemField,
+  ApiSystemItemType,
   SystemFieldType,
 } from '../services/vttApi'
 import styles from './ActorSheetWindow.module.css'
@@ -15,8 +17,10 @@ type SheetMode = 'active' | 'edit'
 interface ActorSheetWindowProps {
   actor: ApiActor
   system: ApiGameSystem | null
+  items: ApiItem[]
   onClose: () => void
   onSave: (actorId: string, payload: Partial<ApiActor>) => Promise<ApiActor>
+  onPatchItem: (itemId: string, payload: Partial<ApiItem>) => Promise<ApiItem>
   onRoll: (payload: { speaker: string; label: string; formula: string }) => Promise<void>
 }
 
@@ -80,6 +84,7 @@ const SKILLS = [
 
 const IDENTITY_FIELDS = ['class_name', 'ancestry', 'background', 'alignment', 'level', 'proficiency_bonus', 'experience']
 const COMBAT_FIELDS = ['hp', 'max_hp', 'temp_hp', 'ac', 'speed', 'hit_dice', 'initiative_bonus']
+const ITEM_SECTION_ORDER = ['Inventario', 'Magias', 'Tracos']
 
 function sectionName(value: unknown) {
   return String(value || 'Basico').trim() || 'Basico'
@@ -141,9 +146,65 @@ function hasUsableValue(value: unknown) {
   return value !== undefined && value !== null && String(value).trim() !== ''
 }
 
-export default function ActorSheetWindow({ actor, system, onClose, onSave, onRoll }: ActorSheetWindowProps) {
+function itemTypeFor(system: ApiGameSystem | null, item: ApiItem): ApiSystemItemType | null {
+  return system?.item_types?.find(type => type.id === item.type) ?? null
+}
+
+function itemTypeLabel(system: ApiGameSystem | null, item: ApiItem) {
+  return itemTypeFor(system, item)?.label || item.type || 'Item'
+}
+
+function itemCategory(system: ApiGameSystem | null, item: ApiItem) {
+  const itemType = itemTypeFor(system, item)
+  const signature = `${item.type} ${itemType?.label || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  if (signature.includes('spell') || signature.includes('magia')) return 'Magias'
+  if (signature.includes('condition') || signature.includes('condicao') || signature.includes('effect') || signature.includes('efeito')) return 'Tracos'
+  return 'Inventario'
+}
+
+function itemIsAlwaysActive(system: ApiGameSystem | null, item: ApiItem) {
+  return itemCategory(system, item) === 'Tracos'
+}
+
+function buildItemEffectValues(system: ApiGameSystem | null, actorItems: ApiItem[]) {
+  const bonuses: Record<string, number> = {}
+  const minimums: Record<string, number> = {}
+
+  for (const item of actorItems) {
+    const data = item.data || {}
+    const active = Boolean(item.equipped) || itemIsAlwaysActive(system, item)
+    if (!active) continue
+
+    for (const [key, rawValue] of Object.entries(data)) {
+      const value = Number(rawValue)
+      if (!Number.isFinite(value)) continue
+
+      if (key.startsWith('bonus_')) {
+        const target = key.slice('bonus_'.length)
+        bonuses[target] = (bonuses[target] || 0) + value
+      }
+
+      if (key === 'armor_class') {
+        minimums.ac = Math.max(minimums.ac || 0, value)
+      }
+
+      if (key.startsWith('min_')) {
+        const target = key.slice('min_'.length)
+        minimums[target] = Math.max(minimums[target] || 0, value)
+      }
+    }
+  }
+
+  return { bonuses, minimums }
+}
+
+export default function ActorSheetWindow({ actor, system, items, onClose, onSave, onPatchItem, onRoll }: ActorSheetWindowProps) {
   const actorTypes = system?.actor_types?.length ? system.actor_types : [FALLBACK_ACTOR_TYPE]
   const actorType = actorTypes.find(type => type.id === actor.type) ?? actorTypes[0]
+  const actorItems = useMemo(
+    () => items.filter(item => item.actor_id === actor.id),
+    [actor.id, items],
+  )
   const fieldMap = useMemo(
     () => new Map<string, ApiSystemField>(actorType.fields.map(field => [field.id, field])),
     [actorType.fields],
@@ -156,7 +217,7 @@ export default function ActorSheetWindow({ actor, system, onClose, onSave, onRol
       groups.set(key, [...(groups.get(key) || []), field])
     }
 
-    return Array.from(groups.entries())
+    const baseSections = Array.from(groups.entries())
       .map(([section, fields]) => ({ section, fields }))
       .sort((a, b) => {
         const aKey = normalizedSectionKey(a.section)
@@ -168,7 +229,14 @@ export default function ActorSheetWindow({ actor, system, onClose, onSave, onRol
         if (bIndex === -1) return -1
         return aIndex - bIndex
       })
-  }, [actorType.fields])
+    const existingSectionKeys = new Set(baseSections.map(section => normalizedSectionKey(section.section)))
+    const itemOnlySections = ITEM_SECTION_ORDER
+      .filter(section => !existingSectionKeys.has(normalizedSectionKey(section)))
+      .filter(section => actorItems.some(item => itemCategory(system, item) === section))
+      .map(section => ({ section, fields: [] as ApiSystemField[] }))
+
+    return [...baseSections, ...itemOnlySections]
+  }, [actorItems, actorType.fields, system])
 
   const [mode, setMode] = useState<SheetMode>('active')
   const [activeTab, setActiveTab] = useState('')
@@ -177,19 +245,40 @@ export default function ActorSheetWindow({ actor, system, onClose, onSave, onRol
   const [position, setPosition] = useState<WindowPoint | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [savingItemId, setSavingItemId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const dragRef = useRef<{ pointerId: number; startX: number; startY: number; base: WindowPoint } | null>(null)
   const formId = `actor-sheet-form-${actor.id}`
+  const itemEffects = useMemo(
+    () => buildItemEffectValues(system, actorItems),
+    [actorItems, system],
+  )
+
+  function computedValue(id: string) {
+    const rawValue = values[id]
+    const numericRawValue = Number(rawValue)
+    const hasNumericRawValue = Number.isFinite(numericRawValue)
+    const minimum = itemEffects.minimums[id]
+    const bonus = itemEffects.bonuses[id] || 0
+
+    if (hasNumericRawValue || minimum !== undefined || bonus !== 0) {
+      const base = Math.max(hasNumericRawValue ? numericRawValue : 0, minimum ?? Number.NEGATIVE_INFINITY)
+      return base + bonus
+    }
+
+    return rawValue
+  }
 
   const activeSection = sections.some(section => section.section === activeTab)
     ? activeTab
     : sections[0]?.section || 'Notas'
   const activeFields = sections.find(section => section.section === activeSection)?.fields || []
-  const hp = values.hp
-  const maxHp = values.max_hp
-  const ac = values.ac
-  const level = values.level
-  const proficiency = asNumber(values.proficiency_bonus, 2)
+  const activeSectionItems = actorItems.filter(item => normalizedSectionKey(itemCategory(system, item)) === normalizedSectionKey(activeSection))
+  const hp = computedValue('hp')
+  const maxHp = computedValue('max_hp')
+  const ac = computedValue('ac')
+  const level = computedValue('level')
+  const proficiency = asNumber(computedValue('proficiency_bonus'), 2)
   const sheetName = name.trim() || actor.name
 
   function updateValue(id: string, value: string | number | boolean, fallbackType: SystemFieldType = 'text') {
@@ -264,8 +353,8 @@ export default function ActorSheetWindow({ actor, system, onClose, onSave, onRol
 
   function resolveActorReference(reference: string) {
     const modifierMatch = reference.match(/^([a-z0-9_]+)\.mod$/i)
-    if (modifierMatch) return abilityModifier(values[modifierMatch[1]])
-    return asNumber(values[reference], 0)
+    if (modifierMatch) return abilityModifier(computedValue(modifierMatch[1]))
+    return asNumber(computedValue(reference), 0)
   }
 
   function resolveRollFormula(formula: string) {
@@ -284,15 +373,15 @@ export default function ActorSheetWindow({ actor, system, onClose, onSave, onRol
   }
 
   function abilityRoll(abilityId: string, abilityLabel: string) {
-    rollFormula(abilityLabel, formulaFor(abilityModifier(values[abilityId])))
+    rollFormula(abilityLabel, formulaFor(abilityModifier(computedValue(abilityId))))
   }
 
   function saveModifier(abilityId: string) {
-    return abilityModifier(values[abilityId]) + (asBoolean(values[`save_${abilityId}_prof`]) ? proficiency : 0)
+    return abilityModifier(computedValue(abilityId)) + (asBoolean(values[`save_${abilityId}_prof`]) ? proficiency : 0)
   }
 
   function skillModifier(skillId: string, abilityId: string) {
-    return abilityModifier(values[abilityId]) + (asBoolean(values[`skill_${skillId}_prof`]) ? proficiency : 0)
+    return abilityModifier(computedValue(abilityId)) + (asBoolean(values[`skill_${skillId}_prof`]) ? proficiency : 0)
   }
 
   function rollSave(abilityId: string, abilityLabel: string) {
@@ -342,7 +431,7 @@ export default function ActorSheetWindow({ actor, system, onClose, onSave, onRol
     return (
       <p key={id}>
         <strong>{fieldLabel}</strong>
-        <span>{String(values[id] ?? '-')}</span>
+        <span>{String(computedValue(id) ?? '-')}</span>
       </p>
     )
   }
@@ -385,9 +474,10 @@ export default function ActorSheetWindow({ actor, system, onClose, onSave, onRol
   }
 
   function renderActiveField(field: ApiSystemField) {
-    const value = values[field.id] ?? field.default_value
+    const rawValue = values[field.id] ?? field.default_value
+    const value = field.type === 'checkbox' ? rawValue : computedValue(field.id) ?? field.default_value
     const fieldFormula = String(field.roll_formula || '').trim()
-    const formulaValue = field.id.endsWith('_formula') || field.id === 'damage_formula' ? String(value || '').trim() : ''
+    const formulaValue = field.id.endsWith('_formula') || field.id === 'damage_formula' ? String(rawValue || '').trim() : ''
     const rollTarget = fieldFormula || formulaValue
 
     if (rollTarget && mode === 'active') {
@@ -416,6 +506,132 @@ export default function ActorSheetWindow({ actor, system, onClose, onSave, onRol
     return (
       <div className={styles.fieldGrid}>
         {visibleFields.map(field => (mode === 'edit' ? renderEditField(field) : renderActiveField(field)))}
+      </div>
+    )
+  }
+
+  function resolveItemReference(item: ApiItem, reference: string) {
+    const itemData = item.data || {}
+    if (Object.prototype.hasOwnProperty.call(itemData, reference)) {
+      return String(itemData[reference])
+    }
+
+    const modifierMatch = reference.match(/^([a-z0-9_]+)\.mod$/i)
+    if (modifierMatch) return String(abilityModifier(computedValue(modifierMatch[1])))
+    return String(asNumber(computedValue(reference), 0))
+  }
+
+  function resolveItemRollFormula(item: ApiItem, formula: string) {
+    return String(formula || '1d20')
+      .replace(/@([a-z0-9_]+(?:\.mod)?)/gi, (_match, reference: string) => resolveItemReference(item, reference))
+      .replace(/\s+/g, '')
+  }
+
+  function rollItemField(item: ApiItem, label: string, formula: string) {
+    rollFormula(`${item.name}: ${label}`, resolveItemRollFormula(item, formula))
+  }
+
+  async function patchAttachedItem(item: ApiItem, payload: Partial<ApiItem>) {
+    setSavingItemId(item.id)
+    setError('')
+    try {
+      await onPatchItem(item.id, payload)
+    } catch {
+      setError('Nao consegui atualizar esse item agora.')
+    } finally {
+      setSavingItemId(null)
+    }
+  }
+
+  function sectionItemCount(section: string) {
+    return actorItems.filter(item => normalizedSectionKey(itemCategory(system, item)) === normalizedSectionKey(section)).length
+  }
+
+  function renderItemField(item: ApiItem, field: ApiSystemField) {
+    const value = item.data?.[field.id] ?? field.default_value
+    const rollTarget = String(field.roll_formula || '').trim()
+
+    if (rollTarget && mode === 'active') {
+      return (
+        <button
+          className={`${styles.itemField} ${styles.itemFieldRollable}`}
+          key={`${item.id}-${field.id}`}
+          type="button"
+          onClick={() => rollItemField(item, field.label, rollTarget)}
+        >
+          <span>{field.label}</span>
+          <strong>{hasUsableValue(value) ? String(value) : resolveItemRollFormula(item, rollTarget)}</strong>
+          <small>{resolveItemRollFormula(item, rollTarget)}</small>
+        </button>
+      )
+    }
+
+    return (
+      <div className={styles.itemField} key={`${item.id}-${field.id}`}>
+        <span>{field.label}</span>
+        <strong>{field.type === 'checkbox' ? (asBoolean(value) ? 'Sim' : 'Nao') : hasUsableValue(value) ? String(value) : '-'}</strong>
+      </div>
+    )
+  }
+
+  function renderSectionItems() {
+    const sectionHasItemCategory = ITEM_SECTION_ORDER.some(section => normalizedSectionKey(section) === normalizedSectionKey(activeSection))
+    if (!sectionHasItemCategory && activeSectionItems.length === 0) return null
+
+    return (
+      <div className={styles.attachedItems}>
+        <div className={styles.attachedItemsHeader}>
+          <span>Itens anexados</span>
+          <small>{activeSectionItems.length}</small>
+        </div>
+
+        {activeSectionItems.length === 0 && (
+          <p className={styles.emptySection}>Nenhum item anexado nesta aba.</p>
+        )}
+
+        {activeSectionItems.map(item => {
+          const itemType = itemTypeFor(system, item)
+          const fields = (itemType?.fields || []).filter(field => field.id !== 'quantity')
+
+          return (
+            <article className={styles.itemCard} key={item.id}>
+              <div className={styles.itemCardHeader}>
+                <div>
+                  <strong>{item.name}</strong>
+                  <span>{itemTypeLabel(system, item)} - qtd {item.quantity ?? 1}</span>
+                </div>
+                <span className={item.equipped || itemIsAlwaysActive(system, item) ? styles.itemActiveBadge : styles.itemBadge}>
+                  {itemIsAlwaysActive(system, item) ? 'Ativo' : item.equipped ? 'Equipado' : 'Guardado'}
+                </span>
+              </div>
+
+              {fields.length > 0 && (
+                <div className={styles.itemFieldGrid}>
+                  {fields.map(field => renderItemField(item, field))}
+                </div>
+              )}
+
+              {mode === 'edit' && (
+                <div className={styles.itemInlineActions}>
+                  <button
+                    type="button"
+                    disabled={savingItemId === item.id || itemIsAlwaysActive(system, item)}
+                    onClick={() => patchAttachedItem(item, { equipped: !item.equipped })}
+                  >
+                    {item.equipped ? 'Guardar' : 'Equipar'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingItemId === item.id}
+                    onClick={() => patchAttachedItem(item, { actor_id: '' })}
+                  >
+                    Soltar da ficha
+                  </button>
+                </div>
+              )}
+            </article>
+          )
+        })}
       </div>
     )
   }
@@ -468,7 +684,7 @@ export default function ActorSheetWindow({ actor, system, onClose, onSave, onRol
       <>
         <div className={styles.abilityGrid}>
           {visibleAbilities.map(ability => {
-            const score = asNumber(values[ability.id], 10)
+            const score = asNumber(computedValue(ability.id), 10)
             const modifier = abilityModifier(score)
 
             if (mode === 'edit') {
@@ -602,16 +818,28 @@ export default function ActorSheetWindow({ actor, system, onClose, onSave, onRol
 
   function renderSection() {
     const sectionKey = normalizedSectionKey(activeSection)
-    if (activeFields.length === 0) {
+    const itemContent = renderSectionItems()
+    let fieldContent = null
+
+    if (activeFields.length > 0) {
+      if (sectionKey === 'identidade') fieldContent = renderIdentity(activeFields)
+      else if (sectionKey === 'combate') fieldContent = renderCombat(activeFields)
+      else if (sectionKey === 'atributos') fieldContent = renderAbilities(activeFields)
+      else if (sectionKey === 'salvaguardas') fieldContent = renderSaves(activeFields)
+      else if (sectionKey === 'pericias') fieldContent = renderSkills(activeFields)
+      else fieldContent = renderGenericFields(activeFields)
+    }
+
+    if (!fieldContent && !itemContent) {
       return <p className={styles.emptySection}>Essa aba ainda nao tem campos no sistema.</p>
     }
 
-    if (sectionKey === 'identidade') return renderIdentity(activeFields)
-    if (sectionKey === 'combate') return renderCombat(activeFields)
-    if (sectionKey === 'atributos') return renderAbilities(activeFields)
-    if (sectionKey === 'salvaguardas') return renderSaves(activeFields)
-    if (sectionKey === 'pericias') return renderSkills(activeFields)
-    return renderGenericFields(activeFields)
+    return (
+      <>
+        {fieldContent}
+        {itemContent}
+      </>
+    )
   }
 
   return (
@@ -692,7 +920,7 @@ export default function ActorSheetWindow({ actor, system, onClose, onSave, onRol
                 type="button"
               >
                 <span>{section.section}</span>
-                <small>{section.fields.length}</small>
+                <small>{section.fields.length + sectionItemCount(section.section)}</small>
               </button>
             ))}
           </nav>
@@ -705,7 +933,7 @@ export default function ActorSheetWindow({ actor, system, onClose, onSave, onRol
                 <span>{mode === 'edit' ? 'Modo editavel' : 'Modo ativo'}</span>
                 <h3>{activeSection}</h3>
               </div>
-              <p>{activeFields.length} campos do sistema</p>
+              <p>{activeFields.length} campos - {activeSectionItems.length} itens</p>
             </div>
             {renderSection()}
           </section>

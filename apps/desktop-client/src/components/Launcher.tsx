@@ -189,8 +189,11 @@ const DEFAULT_ITEM_TYPES: ApiSystemItemType[] = [
     id: 'weapon',
     label: 'Arma',
     fields: [
+      { id: 'attack_bonus', label: 'Bonus de ataque', type: 'number', section: 'Uso', default_value: 0, roll_formula: '1d20 + @attack_bonus' },
       { id: 'damage', label: 'Dano', type: 'text', section: 'Uso', default_value: '1d6', roll_formula: '@damage' },
+      { id: 'damage_type', label: 'Tipo de dano', type: 'text', section: 'Uso', default_value: '' },
       { id: 'properties', label: 'Propriedades', type: 'text', section: 'Uso', default_value: '' },
+      { id: 'bonus_attack_bonus', label: 'Bonus no ataque da ficha', type: 'number', section: 'Efeitos', default_value: 0 },
       { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
     ],
   },
@@ -199,6 +202,7 @@ const DEFAULT_ITEM_TYPES: ApiSystemItemType[] = [
     label: 'Armadura',
     fields: [
       { id: 'armor_class', label: 'CA base', type: 'number', section: 'Uso', default_value: 10 },
+      { id: 'bonus_ac', label: 'Bonus de CA', type: 'number', section: 'Efeitos', default_value: 0 },
       { id: 'properties', label: 'Propriedades', type: 'text', section: 'Uso', default_value: '' },
       { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
     ],
@@ -208,8 +212,11 @@ const DEFAULT_ITEM_TYPES: ApiSystemItemType[] = [
     label: 'Magia',
     fields: [
       { id: 'level', label: 'Circulo/Nivel', type: 'number', section: 'Magia', default_value: 0 },
+      { id: 'school', label: 'Escola', type: 'text', section: 'Magia', default_value: '' },
       { id: 'casting_time', label: 'Tempo de conjuracao', type: 'text', section: 'Magia', default_value: '' },
       { id: 'range', label: 'Alcance', type: 'text', section: 'Magia', default_value: '' },
+      { id: 'duration', label: 'Duracao', type: 'text', section: 'Magia', default_value: '' },
+      { id: 'damage', label: 'Dano/cura', type: 'text', section: 'Uso', default_value: '', roll_formula: '@damage' },
       { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
     ],
   },
@@ -218,6 +225,9 @@ const DEFAULT_ITEM_TYPES: ApiSystemItemType[] = [
     label: 'Equipamento',
     fields: [
       { id: 'quantity', label: 'Quantidade', type: 'number', section: 'Uso', default_value: 1 },
+      { id: 'bonus_ac', label: 'Bonus de CA', type: 'number', section: 'Efeitos', default_value: 0 },
+      { id: 'bonus_str', label: 'Bonus de Forca', type: 'number', section: 'Efeitos', default_value: 0 },
+      { id: 'bonus_dex', label: 'Bonus de Destreza', type: 'number', section: 'Efeitos', default_value: 0 },
       { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
     ],
   },
@@ -227,6 +237,13 @@ const DEFAULT_ITEM_TYPES: ApiSystemItemType[] = [
     fields: [
       { id: 'effect', label: 'Efeito', type: 'textarea', section: 'Regra', default_value: '' },
       { id: 'duration', label: 'Duracao', type: 'text', section: 'Regra', default_value: '' },
+      { id: 'bonus_ac', label: 'Bonus de CA', type: 'number', section: 'Efeitos', default_value: 0 },
+      { id: 'bonus_str', label: 'Bonus de Forca', type: 'number', section: 'Efeitos', default_value: 0 },
+      { id: 'bonus_dex', label: 'Bonus de Destreza', type: 'number', section: 'Efeitos', default_value: 0 },
+      { id: 'bonus_con', label: 'Bonus de Constituicao', type: 'number', section: 'Efeitos', default_value: 0 },
+      { id: 'bonus_int', label: 'Bonus de Inteligencia', type: 'number', section: 'Efeitos', default_value: 0 },
+      { id: 'bonus_wis', label: 'Bonus de Sabedoria', type: 'number', section: 'Efeitos', default_value: 0 },
+      { id: 'bonus_cha', label: 'Bonus de Carisma', type: 'number', section: 'Efeitos', default_value: 0 },
     ],
   },
 ]

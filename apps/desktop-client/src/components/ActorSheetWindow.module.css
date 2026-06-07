@@ -661,6 +661,179 @@
   font-size: 12px;
 }
 
+.attachedItems {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.attachedItemsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.attachedItemsHeader span {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.attachedItemsHeader small {
+  min-width: 24px;
+  border-radius: 999px;
+  background: rgba(230,145,56,0.18);
+  color: #f6d59e;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 7px;
+  text-align: center;
+}
+
+.itemCard {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 7px;
+  background: rgba(255,255,255,0.035);
+  padding: 10px;
+}
+
+.itemCardHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.itemCardHeader > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.itemCardHeader strong,
+.itemCardHeader span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemCardHeader strong {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.itemCardHeader span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.itemBadge,
+.itemActiveBadge {
+  flex: 0 0 auto;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 999px;
+  background: rgba(0,0,0,0.32);
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  padding: 3px 7px;
+  text-transform: uppercase;
+}
+
+.itemActiveBadge {
+  border-color: rgba(230,145,56,0.5);
+  background: rgba(230,145,56,0.16);
+  color: #f6d59e;
+}
+
+.itemFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.itemField {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 5px;
+  background: rgba(0,0,0,0.22);
+  color: var(--text-primary);
+  padding: 7px 8px;
+  text-align: left;
+}
+
+.itemField span {
+  color: var(--text-secondary);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.itemField strong {
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+
+.itemField small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.itemFieldRollable {
+  cursor: pointer;
+  font: inherit;
+}
+
+.itemFieldRollable:hover {
+  border-color: rgba(230,145,56,0.55);
+  background: rgba(230,145,56,0.1);
+}
+
+.itemInlineActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.itemInlineActions button {
+  min-height: 30px;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 5px;
+  background: rgba(255,255,255,0.045);
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 6px 10px;
+}
+
+.itemInlineActions button:hover:not(:disabled) {
+  border-color: rgba(230,145,56,0.5);
+  color: #ffe6b0;
+}
+
+.itemInlineActions button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 .footer {
   display: flex;
   justify-content: flex-end;
@@ -743,7 +916,8 @@
   }
 
   .abilityGrid,
-  .rollList {
+  .rollList,
+  .itemFieldGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

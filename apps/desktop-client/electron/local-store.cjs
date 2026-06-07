@@ -201,6 +201,72 @@ function defaultActorFields() {
   ]
 }
 
+function defaultItemTypes() {
+  return [
+    {
+      id: 'weapon',
+      label: 'Arma',
+      fields: [
+        { id: 'attack_bonus', label: 'Bonus de ataque', type: 'number', section: 'Uso', default_value: 0, roll_formula: '1d20 + @attack_bonus' },
+        { id: 'damage', label: 'Dano', type: 'text', section: 'Uso', default_value: '1d6', roll_formula: '@damage' },
+        { id: 'damage_type', label: 'Tipo de dano', type: 'text', section: 'Uso', default_value: '' },
+        { id: 'properties', label: 'Propriedades', type: 'text', section: 'Uso', default_value: '' },
+        { id: 'bonus_attack_bonus', label: 'Bonus no ataque da ficha', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
+      ],
+    },
+    {
+      id: 'armor',
+      label: 'Armadura',
+      fields: [
+        { id: 'armor_class', label: 'CA base', type: 'number', section: 'Uso', default_value: 10 },
+        { id: 'bonus_ac', label: 'Bonus de CA', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'properties', label: 'Propriedades', type: 'text', section: 'Uso', default_value: '' },
+        { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
+      ],
+    },
+    {
+      id: 'spell',
+      label: 'Magia',
+      fields: [
+        { id: 'level', label: 'Circulo/Nivel', type: 'number', section: 'Magia', default_value: 0 },
+        { id: 'school', label: 'Escola', type: 'text', section: 'Magia', default_value: '' },
+        { id: 'casting_time', label: 'Tempo de conjuracao', type: 'text', section: 'Magia', default_value: '' },
+        { id: 'range', label: 'Alcance', type: 'text', section: 'Magia', default_value: '' },
+        { id: 'duration', label: 'Duracao', type: 'text', section: 'Magia', default_value: '' },
+        { id: 'damage', label: 'Dano/cura', type: 'text', section: 'Uso', default_value: '', roll_formula: '@damage' },
+        { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
+      ],
+    },
+    {
+      id: 'equipment',
+      label: 'Equipamento',
+      fields: [
+        { id: 'quantity', label: 'Quantidade', type: 'number', section: 'Uso', default_value: 1 },
+        { id: 'bonus_ac', label: 'Bonus de CA', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'bonus_str', label: 'Bonus de Forca', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'bonus_dex', label: 'Bonus de Destreza', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
+      ],
+    },
+    {
+      id: 'condition',
+      label: 'Condicao',
+      fields: [
+        { id: 'effect', label: 'Efeito', type: 'textarea', section: 'Regra', default_value: '' },
+        { id: 'duration', label: 'Duracao', type: 'text', section: 'Regra', default_value: '' },
+        { id: 'bonus_ac', label: 'Bonus de CA', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'bonus_str', label: 'Bonus de Forca', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'bonus_dex', label: 'Bonus de Destreza', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'bonus_con', label: 'Bonus de Constituicao', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'bonus_int', label: 'Bonus de Inteligencia', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'bonus_wis', label: 'Bonus de Sabedoria', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'bonus_cha', label: 'Bonus de Carisma', type: 'number', section: 'Efeitos', default_value: 0 },
+      ],
+    },
+  ]
+}
+
 function isDndLikeSystem(system) {
   const signature = `${system?.id || ''} ${system?.name || ''} ${system?.ruleset || ''}`.toLowerCase()
   return signature.includes('dnd')
@@ -244,6 +310,41 @@ function mergeDndLiteFields(actorType, index = 0) {
     ...actorType,
     fields: [...mergedExistingFields, ...missingFields],
   }
+}
+
+function mergeDndLiteItemTypes(itemTypes) {
+  const blueprints = defaultItemTypes().map(normalizeSystemItemType)
+  const existingTypes = Array.isArray(itemTypes) ? itemTypes : []
+  const existingById = new Map(existingTypes.map(itemType => [itemType.id, itemType]))
+
+  const mergedBlueprintTypes = blueprints.map(blueprint => {
+    const existing = existingById.get(blueprint.id)
+    if (!existing) return blueprint
+
+    const fieldBlueprintById = new Map(blueprint.fields.map(field => [field.id, field]))
+    const existingFieldIds = new Set(existing.fields.map(field => field.id))
+    const mergedFields = existing.fields.map(field => {
+      const fieldBlueprint = fieldBlueprintById.get(field.id)
+      if (!fieldBlueprint) return field
+
+      return {
+        ...fieldBlueprint,
+        ...field,
+        section: !field.section || field.section === 'Basico' ? fieldBlueprint.section : field.section,
+        roll_formula: field.roll_formula || fieldBlueprint.roll_formula || '',
+      }
+    })
+    const missingFields = blueprint.fields.filter(field => !existingFieldIds.has(field.id))
+
+    return {
+      ...blueprint,
+      ...existing,
+      fields: [...mergedFields, ...missingFields],
+    }
+  })
+
+  const customTypes = existingTypes.filter(itemType => !blueprints.some(blueprint => blueprint.id === itemType.id))
+  return [...mergedBlueprintTypes, ...customTypes]
 }
 
 function normalizeActorType(actorType, index = 0) {
@@ -310,6 +411,7 @@ function normalizeSystem(system) {
 
   if (isDndLikeSystem(normalized)) {
     normalized.actor_types = normalized.actor_types.map((actorType, index) => mergeDndLiteFields(actorType, index))
+    normalized.item_types = mergeDndLiteItemTypes(normalized.item_types)
   }
 
   validateSystemManifest(normalized)
@@ -430,6 +532,14 @@ function buildActorData(actorType, payloadData = {}) {
   return data
 }
 
+function buildItemData(itemType, payloadData = {}) {
+  const data = {}
+  for (const field of itemType.fields || []) {
+    data[field.id] = normalizeDefaultValue(field.type, payloadData[field.id] ?? field.default_value)
+  }
+  return data
+}
+
 function actorDataFromPayload(payload = {}, base = {}) {
   const data = { ...base, ...(payload.data || {}) }
   const mappings = [
@@ -451,6 +561,10 @@ function actorDataFromPayload(payload = {}, base = {}) {
   }
 
   return data
+}
+
+function itemDataFromPayload(payload = {}, base = {}) {
+  return { ...base, ...(payload.data || {}) }
 }
 
 function legacyActorData(actor) {
@@ -644,6 +758,7 @@ function createLocalStore(savesDir) {
     data.tokens ??= []
     data.messages ??= []
     data.actors ??= []
+    data.items ??= []
     const index = await readIndex()
     const linkedSystem = index.systems.find(system => system.id === data.world?.system_id)
     if (linkedSystem) {
@@ -699,6 +814,7 @@ function createLocalStore(savesDir) {
         ...actor,
         companion_permissions: normalizeActorCompanionPermissions(actor.companion_permissions),
       })),
+      items: data.items,
       messages: data.messages,
       tokens_by_scene: tokensByScene,
     }
@@ -832,6 +948,7 @@ function createLocalStore(savesDir) {
       assets: [],
       tokens: [],
       actors: [],
+      items: [],
       messages: [],
     }
 
@@ -1286,8 +1403,101 @@ function createLocalStore(savesDir) {
   async function deleteActor(actorId) {
     const data = await findWorldByEntity(world => world.actors?.some(actor => actor.id === actorId))
     data.actors = data.actors.filter(actor => actor.id !== actorId)
+    data.items = (data.items || []).map(item => (
+      item.actor_id === actorId ? { ...item, actor_id: '', updated_at: now() } : item
+    ))
     await writeWorld(data)
     return { deleted_id: actorId }
+  }
+
+  async function createItem(worldId, payload) {
+    const data = await readWorld(worldId)
+    const timestamp = now()
+    const system = normalizeSystem(data.system || { name: data.world?.system || 'Sistema local' })
+    const itemTypes = system.item_types || []
+    if (itemTypes.length === 0) {
+      throw new Error('Este sistema ainda nao define tipos de item.')
+    }
+
+    const itemType = itemTypes.find(type => type.id === payload?.type) ?? itemTypes[0]
+    const actorId = String(payload?.actor_id || payload?.actorId || '').trim()
+    if (actorId && !data.actors.some(actor => actor.id === actorId)) {
+      throw new Error('Ficha vinculada ao item nao encontrada neste mundo.')
+    }
+
+    const itemData = buildItemData(itemType, itemDataFromPayload(payload))
+    const item = {
+      id: newId('item'),
+      world_id: worldId,
+      actor_id: actorId,
+      type: itemType.id,
+      name: String(payload?.name || 'Novo item').trim() || 'Novo item',
+      data: itemData,
+      equipped: Boolean(payload?.equipped),
+      quantity: asNumber(payload?.quantity ?? itemData.quantity, 1),
+      created_at: timestamp,
+      updated_at: timestamp,
+    }
+
+    data.items.push(item)
+    await writeWorld(data)
+    return item
+  }
+
+  async function patchItem(itemId, patch) {
+    const data = await findWorldByEntity(world => (world.items || []).some(item => item.id === itemId))
+    const timestamp = now()
+    const system = normalizeSystem(data.system || { name: data.world?.system || 'Sistema local' })
+    const itemTypes = system.item_types || []
+    if (itemTypes.length === 0) {
+      throw new Error('Este sistema ainda nao define tipos de item.')
+    }
+
+    let updatedItem = null
+    data.items = data.items.map(item => {
+      if (item.id !== itemId) return item
+
+      const nextTypeId = String(patch?.type || item.type)
+      const itemType = itemTypes.find(type => type.id === nextTypeId) ?? itemTypes[0]
+      const nextActorId = Object.prototype.hasOwnProperty.call(patch || {}, 'actor_id')
+        ? String(patch.actor_id || '').trim()
+        : Object.prototype.hasOwnProperty.call(patch || {}, 'actorId')
+          ? String(patch.actorId || '').trim()
+          : item.actor_id || ''
+
+      if (nextActorId && !data.actors.some(actor => actor.id === nextActorId)) {
+        throw new Error('Ficha vinculada ao item nao encontrada neste mundo.')
+      }
+
+      const nextData = buildItemData(itemType, itemDataFromPayload(patch, item.data || {}))
+      updatedItem = {
+        ...item,
+        actor_id: nextActorId,
+        type: itemType.id,
+        name: Object.prototype.hasOwnProperty.call(patch || {}, 'name')
+          ? String(patch.name || '').trim() || item.name
+          : item.name,
+        data: nextData,
+        equipped: Object.prototype.hasOwnProperty.call(patch || {}, 'equipped') ? Boolean(patch.equipped) : Boolean(item.equipped),
+        quantity: Object.prototype.hasOwnProperty.call(patch || {}, 'quantity')
+          ? asNumber(patch.quantity, item.quantity ?? 1)
+          : asNumber(nextData.quantity, item.quantity ?? 1),
+        updated_at: timestamp,
+      }
+
+      return updatedItem
+    })
+
+    if (!updatedItem) throw new Error('Item nao encontrado.')
+    await writeWorld(data)
+    return updatedItem
+  }
+
+  async function deleteItem(itemId) {
+    const data = await findWorldByEntity(world => (world.items || []).some(item => item.id === itemId))
+    data.items = data.items.filter(item => item.id !== itemId)
+    await writeWorld(data)
+    return { deleted_id: itemId }
   }
 
   async function deleteAsset(assetId) {
@@ -1381,6 +1591,9 @@ function createLocalStore(savesDir) {
     patchActor,
     saveActorCompanionPermission,
     deleteActor,
+    createItem,
+    patchItem,
+    deleteItem,
     uploadAsset,
     deleteAsset,
     getSystemPackagePath,
