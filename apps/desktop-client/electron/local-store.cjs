@@ -268,6 +268,25 @@ function normalizeActorTypes(actorTypes) {
   return normalized.length > 0 ? normalized : [normalizeActorType({ id: 'personagem', label: 'Personagem' })]
 }
 
+function normalizeSystemItemType(itemType, index = 0) {
+  const label = String(itemType?.label || itemType?.name || `Item ${index + 1}`).trim() || `Item ${index + 1}`
+  const id = fieldId(itemType?.id || label, `item_${index + 1}`)
+  const fields = Array.isArray(itemType?.fields)
+    ? itemType.fields.map(normalizeSystemField)
+    : []
+
+  return {
+    id,
+    label,
+    fields,
+  }
+}
+
+function normalizeSystemItemTypes(itemTypes) {
+  if (!Array.isArray(itemTypes)) return []
+  return itemTypes.map(normalizeSystemItemType).filter(itemType => itemType.id)
+}
+
 function normalizeSystem(system) {
   const timestamp = now()
   const normalized = {
@@ -277,7 +296,7 @@ function normalizeSystem(system) {
     version: String(system?.version || '0.1'),
     description: String(system?.description || ''),
     actor_types: normalizeActorTypes(system?.actor_types || system?.actorTypes),
-    item_types: Array.isArray(system?.item_types) ? system.item_types : [],
+    item_types: normalizeSystemItemTypes(system?.item_types || system?.itemTypes),
     primary_token_attribute: String(system?.primary_token_attribute || 'hp'),
     grid: {
       distance: asNumber(system?.grid?.distance, 5),
@@ -322,6 +341,11 @@ function validateSystemManifest(system) {
     errors.push(`Tipo de ator duplicado: "${actorTypeId}".`)
   }
 
+  const duplicatedItemTypes = duplicateValues((system.item_types || []).map(itemType => itemType.id))
+  for (const itemTypeId of duplicatedItemTypes) {
+    errors.push(`Tipo de item duplicado: "${itemTypeId}".`)
+  }
+
   for (const actorType of system.actor_types || []) {
     if (!actorType.id || !SYSTEM_ID_PATTERN.test(actorType.id)) {
       errors.push(`ID invalido no tipo de ator "${actorType.label || actorType.id}". Use apenas letras, numeros e underscore.`)
@@ -352,6 +376,35 @@ function validateSystemManifest(system) {
 
       if (!SYSTEM_FIELD_TYPES.has(field.type)) {
         errors.push(`Campo "${field.label || field.id}" usa tipo invalido: "${field.type}".`)
+      }
+    }
+  }
+
+  for (const itemType of system.item_types || []) {
+    if (!itemType.id || !SYSTEM_ID_PATTERN.test(itemType.id)) {
+      errors.push(`ID invalido no tipo de item "${itemType.label || itemType.id}". Use apenas letras, numeros e underscore.`)
+    }
+
+    if (!itemType.label) {
+      errors.push(`Tipo de item "${itemType.id}" precisa ter um rotulo.`)
+    }
+
+    const duplicatedFields = duplicateValues((itemType.fields || []).map(field => field.id))
+    for (const fieldId of duplicatedFields) {
+      errors.push(`Campo duplicado em item "${itemType.label}": "${fieldId}".`)
+    }
+
+    for (const field of itemType.fields || []) {
+      if (!field.id || !SYSTEM_ID_PATTERN.test(field.id)) {
+        errors.push(`ID invalido no campo "${field.label || field.id}" de item "${itemType.label}".`)
+      }
+
+      if (!field.label) {
+        errors.push(`Campo "${field.id}" de item "${itemType.label}" precisa ter um rotulo.`)
+      }
+
+      if (!SYSTEM_FIELD_TYPES.has(field.type)) {
+        errors.push(`Campo "${field.label || field.id}" de item "${itemType.label}" usa tipo invalido: "${field.type}".`)
       }
     }
   }

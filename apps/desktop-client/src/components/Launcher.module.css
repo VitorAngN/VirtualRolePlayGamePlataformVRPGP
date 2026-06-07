@@ -457,7 +457,7 @@
 }
 
 .modalLarge {
-  width: min(620px, calc(100vw - 32px));
+  width: min(1040px, calc(100vw - 32px));
   max-height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
@@ -648,6 +648,50 @@
   background: rgba(230,145,56,0.1);
 }
 
+.actorTypeTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actorTypeTab {
+  min-width: 132px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.035);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.actorTypeTab strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.actorTypeTab span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.actorTypeTab:hover,
+.actorTypeTabActive {
+  border-color: rgba(230,145,56,0.58);
+  background: rgba(230,145,56,0.1);
+}
+
+.inlineActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .fieldBuilderRows {
   display: grid;
   gap: 8px;
@@ -664,6 +708,12 @@
   background: rgba(230,145,56,0.055);
   margin-bottom: 10px;
   padding: 10px;
+}
+
+.builderSplit {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(280px, 1.2fr);
+  gap: 10px;
 }
 
 .sectionPreview > span {
@@ -687,6 +737,47 @@
   color: var(--text-primary);
   font-size: 11px;
   padding: 5px 8px;
+}
+
+.sheetPreview {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-sm);
+  background: rgba(0,0,0,0.24);
+  padding: 10px;
+}
+
+.sheetPreview > span {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.sheetPreview > strong {
+  color: var(--text-primary);
+  font-family: var(--font-serif);
+  font-size: 17px;
+}
+
+.sheetPreview > div {
+  display: grid;
+  gap: 3px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 7px;
+}
+
+.sheetPreview b {
+  color: #fff1cf;
+  font-size: 12px;
+}
+
+.sheetPreview small {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .fieldBuilderRow {
@@ -750,6 +841,15 @@
 .fieldRemoveBtn:disabled {
   cursor: not-allowed;
   opacity: 0.42;
+}
+
+.emptyMini {
+  border: 1px dashed rgba(255,255,255,0.14);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 12px;
 }
 
 .checkRow {

@@ -12,6 +12,7 @@ import {
   type ApiGameSystem,
   type ApiSystemActorType,
   type ApiSystemField,
+  type ApiSystemItemType,
   type ApiWorld,
   type SystemFieldType,
 } from '../services/vttApi'
@@ -21,15 +22,20 @@ interface LauncherProps {
   onEnterWorld: (worldId: string) => void
 }
 
+interface SystemTemplateActorType {
+  label: string
+  fields: ApiSystemField[]
+}
+
 interface SystemTemplate {
   id: string
   label: string
   description: string
   ruleset: string
-  actorTypeLabel: string
   gridDistance: string
   gridUnits: string
-  fields: ApiSystemField[]
+  actorTypes: SystemTemplateActorType[]
+  itemTypes: ApiSystemItemType[]
 }
 
 const NEWS_ITEMS = [
@@ -150,36 +156,122 @@ const SIMPLE_ACTOR_FIELDS: ApiSystemField[] = [
   { id: 'notes', label: 'Notas', type: 'textarea', section: 'Notas', default_value: '' },
 ]
 
+const DND_NPC_FIELDS: ApiSystemField[] = [
+  { id: 'creature_type', label: 'Tipo de criatura', type: 'text', section: 'Identidade', default_value: '' },
+  { id: 'challenge', label: 'Desafio', type: 'text', section: 'Identidade', default_value: '0' },
+  { id: 'hp', label: 'PV atual', type: 'number', section: 'Combate', default_value: 8 },
+  { id: 'max_hp', label: 'PV maximo', type: 'number', section: 'Combate', default_value: 8 },
+  { id: 'ac', label: 'CA', type: 'number', section: 'Combate', default_value: 10 },
+  { id: 'speed', label: 'Deslocamento', type: 'number', section: 'Combate', default_value: 9 },
+  { id: 'str', label: 'Forca', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @str.mod' },
+  { id: 'dex', label: 'Destreza', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @dex.mod' },
+  { id: 'con', label: 'Constituicao', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @con.mod' },
+  { id: 'int', label: 'Inteligencia', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @int.mod' },
+  { id: 'wis', label: 'Sabedoria', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @wis.mod' },
+  { id: 'cha', label: 'Carisma', type: 'number', section: 'Atributos', default_value: 10, roll_formula: '1d20 + @cha.mod' },
+  { id: 'senses', label: 'Sentidos', type: 'text', section: 'Tracos', default_value: '' },
+  { id: 'languages', label: 'Idiomas', type: 'text', section: 'Tracos', default_value: '' },
+  { id: 'traits', label: 'Tracos', type: 'textarea', section: 'Tracos', default_value: '' },
+  { id: 'actions', label: 'Acoes', type: 'textarea', section: 'Acoes', default_value: '' },
+  { id: 'reactions', label: 'Reacoes', type: 'textarea', section: 'Acoes', default_value: '' },
+  { id: 'loot', label: 'Tesouro/loot', type: 'textarea', section: 'Inventario', default_value: '' },
+  { id: 'notes', label: 'Notas do mestre', type: 'textarea', section: 'Notas', default_value: '' },
+]
+
+const DND_MONSTER_FIELDS: ApiSystemField[] = [
+  ...DND_NPC_FIELDS,
+  { id: 'legendary_actions', label: 'Acoes lendarias', type: 'textarea', section: 'Acoes', default_value: '' },
+  { id: 'lair_actions', label: 'Acoes de covil', type: 'textarea', section: 'Acoes', default_value: '' },
+]
+
+const DEFAULT_ITEM_TYPES: ApiSystemItemType[] = [
+  {
+    id: 'weapon',
+    label: 'Arma',
+    fields: [
+      { id: 'damage', label: 'Dano', type: 'text', section: 'Uso', default_value: '1d6', roll_formula: '@damage' },
+      { id: 'properties', label: 'Propriedades', type: 'text', section: 'Uso', default_value: '' },
+      { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
+    ],
+  },
+  {
+    id: 'armor',
+    label: 'Armadura',
+    fields: [
+      { id: 'armor_class', label: 'CA base', type: 'number', section: 'Uso', default_value: 10 },
+      { id: 'properties', label: 'Propriedades', type: 'text', section: 'Uso', default_value: '' },
+      { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
+    ],
+  },
+  {
+    id: 'spell',
+    label: 'Magia',
+    fields: [
+      { id: 'level', label: 'Circulo/Nivel', type: 'number', section: 'Magia', default_value: 0 },
+      { id: 'casting_time', label: 'Tempo de conjuracao', type: 'text', section: 'Magia', default_value: '' },
+      { id: 'range', label: 'Alcance', type: 'text', section: 'Magia', default_value: '' },
+      { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
+    ],
+  },
+  {
+    id: 'equipment',
+    label: 'Equipamento',
+    fields: [
+      { id: 'quantity', label: 'Quantidade', type: 'number', section: 'Uso', default_value: 1 },
+      { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
+    ],
+  },
+  {
+    id: 'condition',
+    label: 'Condicao',
+    fields: [
+      { id: 'effect', label: 'Efeito', type: 'textarea', section: 'Regra', default_value: '' },
+      { id: 'duration', label: 'Duracao', type: 'text', section: 'Regra', default_value: '' },
+    ],
+  },
+]
+
 const SYSTEM_TEMPLATES: SystemTemplate[] = [
   {
     id: 'dnd5e-lite',
     label: 'D&D 5e Lite',
     description: 'Ficha SRD d20 com identidade, combate, atributos, pericias, acoes, inventario, magias e notas.',
     ruleset: 'd20',
-    actorTypeLabel: 'Personagem',
     gridDistance: '5',
     gridUnits: 'ft',
-    fields: DEFAULT_ACTOR_FIELDS,
+    actorTypes: [
+      { label: 'Personagem', fields: DEFAULT_ACTOR_FIELDS },
+      { label: 'NPC', fields: DND_NPC_FIELDS },
+      { label: 'Monstro', fields: DND_MONSTER_FIELDS },
+    ],
+    itemTypes: DEFAULT_ITEM_TYPES,
   },
   {
     id: 'simple-rpg',
     label: 'RPG simples',
     description: 'Ficha curta com PV, defesa e notas. Boa para comecar do zero.',
     ruleset: 'custom',
-    actorTypeLabel: 'Personagem',
     gridDistance: '1',
     gridUnits: 'quadrado',
-    fields: SIMPLE_ACTOR_FIELDS,
+    actorTypes: [
+      { label: 'Personagem', fields: SIMPLE_ACTOR_FIELDS },
+      { label: 'NPC', fields: SIMPLE_ACTOR_FIELDS },
+    ],
+    itemTypes: [
+      { id: 'item', label: 'Item', fields: [{ id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' }] },
+    ],
   },
   {
     id: 'blank',
     label: 'Em branco',
     description: 'Comeca quase vazio para montar um sistema totalmente proprio.',
     ruleset: 'custom',
-    actorTypeLabel: 'Personagem',
     gridDistance: '1',
     gridUnits: 'unidade',
-    fields: [{ id: 'notes', label: 'Notas', type: 'textarea', section: 'Notas', default_value: '' }],
+    actorTypes: [
+      { label: 'Personagem', fields: [{ id: 'notes', label: 'Notas', type: 'textarea', section: 'Notas', default_value: '' }] },
+    ],
+    itemTypes: [],
   },
 ]
 
@@ -211,6 +303,22 @@ function cloneActorFields(fields: ApiSystemField[] = []) {
   return fields.map(field => ({ ...field }))
 }
 
+function cloneActorTypes(actorTypes: ApiSystemActorType[] = []) {
+  return actorTypes.map((actorType, index) => ({
+    id: fieldId(actorType.id || actorType.label, index === 0 ? 'personagem' : `ator_${index + 1}`),
+    label: String(actorType.label || actorType.id || `Ator ${index + 1}`),
+    fields: cloneActorFields(actorType.fields || []),
+  }))
+}
+
+function cloneItemTypes(itemTypes: ApiSystemItemType[] = []) {
+  return itemTypes.map((itemType, index) => ({
+    id: fieldId(itemType.id || itemType.label, `item_${index + 1}`),
+    label: String(itemType.label || itemType.id || `Item ${index + 1}`),
+    fields: cloneActorFields(itemType.fields || []),
+  }))
+}
+
 function sectionNames(fields: ApiSystemField[]) {
   return Array.from(new Set(fields.map(field => String(field.section || 'Basico').trim() || 'Basico')))
 }
@@ -232,14 +340,35 @@ function normalizeActorFields(fields: ApiSystemField[]) {
     })
 }
 
-function makeActorType(label: string, fields: ApiSystemField[]): ApiSystemActorType {
+function makeActorType(label: string, fields: ApiSystemField[], id?: string, index = 0): ApiSystemActorType {
   const safeLabel = label.trim() || 'Personagem'
 
   return {
-    id: fieldId(safeLabel, 'personagem'),
+    id: fieldId(id || safeLabel, index === 0 ? 'personagem' : `ator_${index + 1}`),
     label: safeLabel,
     fields: normalizeActorFields(fields),
   }
+}
+
+function makeActorTypeDraft(label: string, fields: ApiSystemField[], index = 0): ApiSystemActorType {
+  return makeActorType(label, cloneActorFields(fields), undefined, index)
+}
+
+function normalizeActorTypesForSave(actorTypes: ApiSystemActorType[]) {
+  return actorTypes.map((actorType, index) => makeActorType(actorType.label, actorType.fields, actorType.id, index))
+}
+
+function normalizeItemTypesForSave(itemTypes: ApiSystemItemType[]) {
+  return itemTypes
+    .map((itemType, index) => {
+      const label = String(itemType.label || `Item ${index + 1}`).trim() || `Item ${index + 1}`
+      return {
+        id: fieldId(itemType.id || label, `item_${index + 1}`),
+        label,
+        fields: normalizeActorFields(itemType.fields || []),
+      }
+    })
+    .filter(itemType => itemType.label)
 }
 
 function newSystemField(index: number): ApiSystemField {
@@ -251,6 +380,20 @@ function newSystemField(index: number): ApiSystemField {
     default_value: '',
     roll_formula: '',
   }
+}
+
+function newItemType(index: number): ApiSystemItemType {
+  return {
+    id: `item_${index + 1}`,
+    label: `Item ${index + 1}`,
+    fields: [
+      { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '', roll_formula: '' },
+    ],
+  }
+}
+
+function actorTypesFromTemplate(template: SystemTemplate) {
+  return template.actorTypes.map((actorType, index) => makeActorTypeDraft(actorType.label, actorType.fields, index))
 }
 
 function duplicatedValues(values: string[]) {
@@ -265,22 +408,58 @@ function duplicatedValues(values: string[]) {
   return Array.from(duplicated)
 }
 
-function validateSystemDraft(systemName: string, actorType: ApiSystemActorType, gridDistance: string, gridUnits: string) {
+function validateSystemFields(fields: ApiSystemField[], scopeLabel: string) {
+  const errors: string[] = []
+
+  const duplicatedFieldIds = duplicatedValues(fields.map(field => field.id))
+  if (duplicatedFieldIds.length > 0) {
+    errors.push(`IDs de campo duplicados em ${scopeLabel}: ${duplicatedFieldIds.join(', ')}.`)
+  }
+
+  fields.forEach((field, index) => {
+    if (!field.id.trim()) errors.push(`Campo ${index + 1} de ${scopeLabel} precisa ter ID.`)
+    if (!field.label.trim()) errors.push(`Campo ${field.id || index + 1} de ${scopeLabel} precisa ter rotulo.`)
+    if (!FIELD_TYPES.includes(field.type)) errors.push(`Campo ${field.label || field.id} de ${scopeLabel} usa tipo invalido.`)
+  })
+
+  return errors
+}
+
+function validateSystemDraft(
+  systemName: string,
+  actorTypes: ApiSystemActorType[],
+  itemTypes: ApiSystemItemType[],
+  gridDistance: string,
+  gridUnits: string,
+) {
   const errors: string[] = []
 
   if (!systemName.trim()) errors.push('Nome do sistema e obrigatorio.')
-  if (!actorType.label.trim()) errors.push('Tipo inicial de ator precisa ter nome.')
-  if (actorType.fields.length === 0) errors.push('Adicione pelo menos um campo na ficha.')
+  if (actorTypes.length === 0) errors.push('Adicione pelo menos um tipo de ator.')
 
-  const duplicatedFieldIds = duplicatedValues(actorType.fields.map(field => field.id))
-  if (duplicatedFieldIds.length > 0) {
-    errors.push(`IDs de campo duplicados: ${duplicatedFieldIds.join(', ')}.`)
+  const duplicatedActorTypeIds = duplicatedValues(actorTypes.map(actorType => actorType.id))
+  if (duplicatedActorTypeIds.length > 0) {
+    errors.push(`IDs de tipo de ator duplicados: ${duplicatedActorTypeIds.join(', ')}.`)
   }
 
-  actorType.fields.forEach((field, index) => {
-    if (!field.id.trim()) errors.push(`Campo ${index + 1} precisa ter ID.`)
-    if (!field.label.trim()) errors.push(`Campo ${field.id || index + 1} precisa ter rotulo.`)
-    if (!FIELD_TYPES.includes(field.type)) errors.push(`Campo ${field.label || field.id} usa tipo invalido.`)
+  actorTypes.forEach((actorType, index) => {
+    const scopeLabel = actorType.label || `tipo de ator ${index + 1}`
+    if (!actorType.id.trim()) errors.push(`Tipo de ator ${index + 1} precisa ter ID.`)
+    if (!actorType.label.trim()) errors.push(`Tipo de ator ${actorType.id || index + 1} precisa ter nome.`)
+    if (actorType.fields.length === 0) errors.push(`${scopeLabel} precisa ter pelo menos um campo.`)
+    errors.push(...validateSystemFields(actorType.fields, scopeLabel))
+  })
+
+  const duplicatedItemTypeIds = duplicatedValues(itemTypes.map(itemType => itemType.id))
+  if (duplicatedItemTypeIds.length > 0) {
+    errors.push(`IDs de tipo de item duplicados: ${duplicatedItemTypeIds.join(', ')}.`)
+  }
+
+  itemTypes.forEach((itemType, index) => {
+    const scopeLabel = `item ${itemType.label || index + 1}`
+    if (!itemType.id.trim()) errors.push(`Tipo de item ${index + 1} precisa ter ID.`)
+    if (!itemType.label.trim()) errors.push(`Tipo de item ${itemType.id || index + 1} precisa ter nome.`)
+    errors.push(...validateSystemFields(itemType.fields || [], scopeLabel))
   })
 
   const distance = Number(gridDistance)
@@ -338,6 +517,8 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
   const [selectedSystem, setSelectedSystem] = useState<ApiGameSystem | null>(null)
   const [contextMenu, setContextMenu] = useState<{ world: ApiWorld; x: number; y: number } | null>(null)
   const [formError, setFormError] = useState('')
+  const [activeActorTypeIndex, setActiveActorTypeIndex] = useState(0)
+  const [activeItemTypeIndex, setActiveItemTypeIndex] = useState(0)
   const [worldForm, setWorldForm] = useState({
     name: '',
     description: '',
@@ -354,8 +535,8 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
     version: '',
     description: '',
     templateId: 'dnd5e-lite',
-    actorTypeLabel: 'Personagem',
-    actorFields: cloneActorFields(DEFAULT_ACTOR_FIELDS),
+    actorTypes: actorTypesFromTemplate(SYSTEM_TEMPLATES[0]),
+    itemTypes: cloneItemTypes(DEFAULT_ITEM_TYPES),
     gridDistance: '5',
     gridUnits: 'ft',
   })
@@ -440,35 +621,40 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
   }
 
   function openSystemModal() {
+    const template = SYSTEM_TEMPLATES[0]
     setSystemForm({
       name: '',
       ruleset: '',
       version: '0.1',
       description: '',
-      templateId: 'dnd5e-lite',
-      actorTypeLabel: 'Personagem',
-      actorFields: cloneActorFields(DEFAULT_ACTOR_FIELDS),
-      gridDistance: '5',
-      gridUnits: 'ft',
+      templateId: template.id,
+      actorTypes: actorTypesFromTemplate(template),
+      itemTypes: cloneItemTypes(template.itemTypes),
+      gridDistance: template.gridDistance,
+      gridUnits: template.gridUnits,
     })
+    setActiveActorTypeIndex(0)
+    setActiveItemTypeIndex(0)
     setSelectedSystem(null)
     setFormError('')
     setModal('system')
   }
 
   function openEditSystemModal(system: ApiGameSystem) {
-    const actorType = system.actor_types?.[0]
+    const actorTypes = cloneActorTypes(system.actor_types?.length ? system.actor_types : [makeActorTypeDraft('Personagem', DEFAULT_ACTOR_FIELDS)])
     setSystemForm({
       name: system.name,
       ruleset: system.ruleset || '',
       version: system.version || '0.1',
       description: system.description || '',
       templateId: 'custom',
-      actorTypeLabel: actorType?.label || 'Personagem',
-      actorFields: cloneActorFields(actorType?.fields?.length ? actorType.fields : DEFAULT_ACTOR_FIELDS),
+      actorTypes,
+      itemTypes: cloneItemTypes(system.item_types || []),
       gridDistance: String(system.grid?.distance ?? 5),
       gridUnits: system.grid?.units || 'ft',
     })
+    setActiveActorTypeIndex(0)
+    setActiveItemTypeIndex(0)
     setSelectedSystem(system)
     setFormError('')
     setModal('editSystem')
@@ -482,27 +668,86 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
       ...prev,
       templateId: template.id,
       ruleset: template.ruleset,
-      actorTypeLabel: template.actorTypeLabel,
-      actorFields: cloneActorFields(template.fields),
+      actorTypes: actorTypesFromTemplate(template),
+      itemTypes: cloneItemTypes(template.itemTypes),
       gridDistance: template.gridDistance,
       gridUnits: template.gridUnits,
     }))
+    setActiveActorTypeIndex(0)
+    setActiveItemTypeIndex(0)
+  }
+
+  function updateActorType(index: number, patch: Partial<ApiSystemActorType>) {
+    setSystemForm(prev => ({
+      ...prev,
+      templateId: 'custom',
+      actorTypes: prev.actorTypes.map((actorType, actorTypeIndex) => (
+        actorTypeIndex === index ? { ...actorType, ...patch } : actorType
+      )),
+    }))
+  }
+
+  function addActorType() {
+    setSystemForm(prev => ({
+      ...prev,
+      templateId: 'custom',
+      actorTypes: [
+        ...prev.actorTypes,
+        makeActorTypeDraft(`Ator ${prev.actorTypes.length + 1}`, SIMPLE_ACTOR_FIELDS, prev.actorTypes.length),
+      ],
+    }))
+    setActiveActorTypeIndex(systemForm.actorTypes.length)
+  }
+
+  function duplicateActorType(index: number) {
+    setSystemForm(prev => ({
+      ...prev,
+      templateId: 'custom',
+      actorTypes: [
+        ...prev.actorTypes,
+        makeActorTypeDraft(
+          `${prev.actorTypes[index]?.label || 'Ator'} copia`,
+          prev.actorTypes[index]?.fields || SIMPLE_ACTOR_FIELDS,
+          prev.actorTypes.length,
+        ),
+      ],
+    }))
+    setActiveActorTypeIndex(systemForm.actorTypes.length)
+  }
+
+  function removeActorType(index: number) {
+    setSystemForm(prev => {
+      if (prev.actorTypes.length <= 1) return prev
+      return {
+        ...prev,
+        templateId: 'custom',
+        actorTypes: prev.actorTypes.filter((_, actorTypeIndex) => actorTypeIndex !== index),
+      }
+    })
+    setActiveActorTypeIndex(prev => Math.max(0, Math.min(prev, systemForm.actorTypes.length - 2)))
   }
 
   function updateSystemField(index: number, patch: Partial<ApiSystemField>) {
     setSystemForm(prev => ({
       ...prev,
       templateId: 'custom',
-      actorFields: prev.actorFields.map((field, fieldIndex) => (
-        fieldIndex === index
+      actorTypes: prev.actorTypes.map((actorType, actorTypeIndex) => (
+        actorTypeIndex === activeActorTypeIndex
           ? {
-              ...field,
-              ...patch,
-              default_value: patch.type && patch.type !== field.type
-                ? parseDefaultValue(patch.type, field.default_value)
-                : patch.default_value ?? field.default_value,
+              ...actorType,
+              fields: actorType.fields.map((field, fieldIndex) => (
+                fieldIndex === index
+                  ? {
+                      ...field,
+                      ...patch,
+                      default_value: patch.type && patch.type !== field.type
+                        ? parseDefaultValue(patch.type, field.default_value)
+                        : patch.default_value ?? field.default_value,
+                    }
+                  : field
+              )),
             }
-          : field
+          : actorType
       )),
     }))
   }
@@ -511,7 +756,11 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
     setSystemForm(prev => ({
       ...prev,
       templateId: 'custom',
-      actorFields: [...prev.actorFields, newSystemField(prev.actorFields.length)],
+      actorTypes: prev.actorTypes.map((actorType, actorTypeIndex) => (
+        actorTypeIndex === activeActorTypeIndex
+          ? { ...actorType, fields: [...actorType.fields, newSystemField(actorType.fields.length)] }
+          : actorType
+      )),
     }))
   }
 
@@ -519,7 +768,88 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
     setSystemForm(prev => ({
       ...prev,
       templateId: 'custom',
-      actorFields: prev.actorFields.filter((_, fieldIndex) => fieldIndex !== index),
+      actorTypes: prev.actorTypes.map((actorType, actorTypeIndex) => (
+        actorTypeIndex === activeActorTypeIndex
+          ? { ...actorType, fields: actorType.fields.filter((_, fieldIndex) => fieldIndex !== index) }
+          : actorType
+      )),
+    }))
+  }
+
+  function updateItemType(index: number, patch: Partial<ApiSystemItemType>) {
+    setSystemForm(prev => ({
+      ...prev,
+      templateId: 'custom',
+      itemTypes: prev.itemTypes.map((itemType, itemTypeIndex) => (
+        itemTypeIndex === index ? { ...itemType, ...patch } : itemType
+      )),
+    }))
+  }
+
+  function addItemType() {
+    setSystemForm(prev => ({
+      ...prev,
+      templateId: 'custom',
+      itemTypes: [...prev.itemTypes, newItemType(prev.itemTypes.length)],
+    }))
+    setActiveItemTypeIndex(systemForm.itemTypes.length)
+  }
+
+  function removeItemType(index: number) {
+    setSystemForm(prev => ({
+      ...prev,
+      templateId: 'custom',
+      itemTypes: prev.itemTypes.filter((_, itemTypeIndex) => itemTypeIndex !== index),
+    }))
+    setActiveItemTypeIndex(prev => Math.max(0, Math.min(prev, systemForm.itemTypes.length - 2)))
+  }
+
+  function updateItemField(index: number, patch: Partial<ApiSystemField>) {
+    setSystemForm(prev => ({
+      ...prev,
+      templateId: 'custom',
+      itemTypes: prev.itemTypes.map((itemType, itemTypeIndex) => (
+        itemTypeIndex === activeItemTypeIndex
+          ? {
+              ...itemType,
+              fields: itemType.fields.map((field, fieldIndex) => (
+                fieldIndex === index
+                  ? {
+                      ...field,
+                      ...patch,
+                      default_value: patch.type && patch.type !== field.type
+                        ? parseDefaultValue(patch.type, field.default_value)
+                        : patch.default_value ?? field.default_value,
+                    }
+                  : field
+              )),
+            }
+          : itemType
+      )),
+    }))
+  }
+
+  function addItemField() {
+    setSystemForm(prev => ({
+      ...prev,
+      templateId: 'custom',
+      itemTypes: prev.itemTypes.map((itemType, itemTypeIndex) => (
+        itemTypeIndex === activeItemTypeIndex
+          ? { ...itemType, fields: [...itemType.fields, newSystemField(itemType.fields.length)] }
+          : itemType
+      )),
+    }))
+  }
+
+  function removeItemField(index: number) {
+    setSystemForm(prev => ({
+      ...prev,
+      templateId: 'custom',
+      itemTypes: prev.itemTypes.map((itemType, itemTypeIndex) => (
+        itemTypeIndex === activeItemTypeIndex
+          ? { ...itemType, fields: itemType.fields.filter((_, fieldIndex) => fieldIndex !== index) }
+          : itemType
+      )),
     }))
   }
 
@@ -559,9 +889,10 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
   async function handleCreateSystem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!systemForm.name.trim()) return
-    const actorType = makeActorType(systemForm.actorTypeLabel, systemForm.actorFields)
+    const actorTypes = normalizeActorTypesForSave(systemForm.actorTypes)
+    const itemTypes = normalizeItemTypesForSave(systemForm.itemTypes)
 
-    const validationErrors = validateSystemDraft(systemForm.name, actorType, systemForm.gridDistance, systemForm.gridUnits)
+    const validationErrors = validateSystemDraft(systemForm.name, actorTypes, itemTypes, systemForm.gridDistance, systemForm.gridUnits)
     if (validationErrors.length > 0) {
       setFormError(validationErrors.map(error => `- ${error}`).join('\n'))
       return
@@ -575,7 +906,8 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
         ruleset: systemForm.ruleset.trim(),
         version: systemForm.version.trim(),
         description: systemForm.description.trim(),
-        actor_types: [actorType],
+        actor_types: actorTypes,
+        item_types: itemTypes,
         grid: {
           distance: Number(systemForm.gridDistance) || 5,
           units: systemForm.gridUnits.trim() || 'ft',
@@ -594,9 +926,10 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
   async function handleEditSystem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!selectedSystem || !systemForm.name.trim()) return
-    const actorType = makeActorType(systemForm.actorTypeLabel, systemForm.actorFields)
+    const actorTypes = normalizeActorTypesForSave(systemForm.actorTypes)
+    const itemTypes = normalizeItemTypesForSave(systemForm.itemTypes)
 
-    const validationErrors = validateSystemDraft(systemForm.name, actorType, systemForm.gridDistance, systemForm.gridUnits)
+    const validationErrors = validateSystemDraft(systemForm.name, actorTypes, itemTypes, systemForm.gridDistance, systemForm.gridUnits)
     if (validationErrors.length > 0) {
       setFormError(validationErrors.map(error => `- ${error}`).join('\n'))
       return
@@ -610,7 +943,8 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
         ruleset: systemForm.ruleset.trim(),
         version: systemForm.version.trim(),
         description: systemForm.description.trim(),
-        actor_types: [actorType],
+        actor_types: actorTypes,
+        item_types: itemTypes,
         grid: {
           distance: Number(systemForm.gridDistance) || 5,
           units: systemForm.gridUnits.trim() || 'ft',
@@ -706,6 +1040,164 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
     }
   }
 
+  function handleExportSystem(system: ApiGameSystem) {
+    const manifest = { ...system }
+    delete manifest.package_path
+    delete manifest.manifest_path
+    const blob = new Blob([`${JSON.stringify(manifest, null, 2)}\n`], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${fieldId(system.name || system.id, 'sistema')}.system.json`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  async function importSystemFile(file: File) {
+    setCreatingSystem(true)
+    try {
+      const raw = JSON.parse(await file.text()) as Partial<ApiGameSystem>
+      const rawManifest = raw as Partial<ApiGameSystem> & { actorTypes?: ApiSystemActorType[]; itemTypes?: ApiSystemItemType[] }
+      const actorTypes = normalizeActorTypesForSave(cloneActorTypes(rawManifest.actor_types || rawManifest.actorTypes || []))
+      const itemTypes = normalizeItemTypesForSave(cloneItemTypes(rawManifest.item_types || rawManifest.itemTypes || []))
+      const name = String(raw.name || file.name.replace(/\.json$/i, '')).trim()
+      const gridDistance = String(raw.grid?.distance ?? 5)
+      const gridUnits = String(raw.grid?.units || 'ft')
+      const validationErrors = validateSystemDraft(name, actorTypes, itemTypes, gridDistance, gridUnits)
+
+      if (validationErrors.length > 0) {
+        window.alert(`Sistema importado invalido:\n- ${validationErrors.join('\n- ')}`)
+        return
+      }
+
+      const system = await createSystem({
+        name,
+        ruleset: String(raw.ruleset || ''),
+        version: String(raw.version || '0.1'),
+        description: String(raw.description || ''),
+        actor_types: actorTypes,
+        item_types: itemTypes,
+        primary_token_attribute: raw.primary_token_attribute || 'hp',
+        grid: {
+          distance: Number(gridDistance) || 5,
+          units: gridUnits.trim() || 'ft',
+        },
+      })
+      setSystems(prev => [...prev, system])
+      setActiveTab('systems')
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Nao consegui importar esse sistema.')
+    } finally {
+      setCreatingSystem(false)
+    }
+  }
+
+  function openSystemImportFile() {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json,application/json'
+    input.onchange = () => {
+      const file = input.files?.[0]
+      if (file) void importSystemFile(file)
+    }
+    input.click()
+  }
+
+  function renderFieldRows(
+    fields: ApiSystemField[],
+    updateField: (index: number, patch: Partial<ApiSystemField>) => void,
+    removeField: (index: number) => void,
+    minimumFields = 1,
+  ) {
+    return (
+      <div className={styles.fieldBuilderRows}>
+        {fields.map((field, index) => (
+          <div className={styles.fieldBuilderRow} key={`${field.id}-${index}`}>
+            <label>
+              <span>Rotulo</span>
+              <input
+                className={styles.formInput}
+                value={field.label}
+                onChange={event => updateField(index, {
+                  label: event.target.value,
+                  id: fieldId(event.target.value, field.id),
+                })}
+              />
+            </label>
+            <label>
+              <span>ID</span>
+              <input
+                className={styles.formInput}
+                value={field.id}
+                onChange={event => updateField(index, { id: fieldId(event.target.value, field.id) })}
+              />
+            </label>
+            <label>
+              <span>Tipo</span>
+              <select
+                className={styles.formSelect}
+                value={field.type}
+                onChange={event => updateField(index, { type: event.target.value as SystemFieldType })}
+              >
+                {FIELD_TYPES.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Padrao</span>
+              {field.type === 'checkbox' ? (
+                <span className={styles.builderCheck}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(field.default_value)}
+                    onChange={event => updateField(index, { default_value: event.target.checked })}
+                  />
+                  Ligado
+                </span>
+              ) : (
+                <input
+                  className={styles.formInput}
+                  type={field.type === 'number' ? 'number' : 'text'}
+                  value={String(field.default_value ?? '')}
+                  onChange={event => updateField(index, { default_value: parseDefaultValue(field.type, event.target.value) })}
+                />
+              )}
+            </label>
+            <label>
+              <span>Secao</span>
+              <input
+                className={styles.formInput}
+                list="system-section-presets"
+                value={field.section}
+                onChange={event => updateField(index, { section: event.target.value })}
+              />
+            </label>
+            <label>
+              <span>Rolagem</span>
+              <input
+                className={styles.formInput}
+                value={field.roll_formula || ''}
+                onChange={event => updateField(index, { roll_formula: event.target.value })}
+                placeholder="1d20 + @campo.mod"
+              />
+            </label>
+            <button
+              className={styles.fieldRemoveBtn}
+              type="button"
+              onClick={() => removeField(index)}
+              disabled={fields.length <= minimumFields}
+            >
+              Apagar
+            </button>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   const isWorldsTab = activeTab === 'worlds'
   const worldsStatusText =
     status === 'loading'
@@ -719,7 +1211,10 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
       : status === 'offline'
         ? 'Nao consegui acessar os sistemas locais agora.'
         : formatLocalCount(systems.length, 'sistema', 'sistemas')
-  const systemSectionPreview = sectionNames(systemForm.actorFields)
+  const activeSystemActorType = systemForm.actorTypes[activeActorTypeIndex] ?? systemForm.actorTypes[0]
+  const activeSystemItemType = systemForm.itemTypes[activeItemTypeIndex] ?? systemForm.itemTypes[0]
+  const systemSectionPreview = sectionNames(activeSystemActorType?.fields || [])
+  const itemSectionPreview = sectionNames(activeSystemItemType?.fields || [])
 
   if (selectedWorld && modal !== 'editWorld') {
     return (
@@ -882,6 +1377,9 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
                   <div className={styles.filterInput} aria-live="polite">
                     {systemsStatusText}
                   </div>
+                  <button className={styles.secondaryBtn} type="button" onClick={openSystemImportFile} disabled={creatingSystem || status === 'offline'}>
+                    Importar JSON
+                  </button>
                   <button className={styles.secondaryBtn} type="button" onClick={openSystemModal} disabled={creatingSystem || status === 'offline'}>
                     {creatingSystem ? 'Criando...' : 'Criar sistema'}
                   </button>
@@ -901,6 +1399,7 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
                       <div className={styles.systemMeta}>
                         <span>{system.actor_types?.length || 0} tipos de ator</span>
                         <span>{system.actor_types?.reduce((sum, type) => sum + type.fields.length, 0) || 0} campos</span>
+                        <span>{system.item_types?.length || 0} tipos de item</span>
                         <span>{system.grid?.distance ?? 5} {system.grid?.units || 'ft'}</span>
                       </div>
                       <code className={styles.systemPath}>{system.manifest_path || 'systems/.../system.json'}</code>
@@ -918,6 +1417,13 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
                           onClick={() => openEditSystemModal(system)}
                         >
                           Editar
+                        </button>
+                        <button
+                          className={styles.systemActionBtn}
+                          type="button"
+                          onClick={() => handleExportSystem(system)}
+                        >
+                          Exportar
                         </button>
                         <button
                           className={styles.systemDeleteBtn}
@@ -1292,121 +1798,187 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
                   ))}
                 </div>
               </section>
-              <label className={styles.formRow}>
-                <span className={styles.formLabel}>Tipo inicial de ator</span>
-                <input
-                  className={styles.formInput}
-                  value={systemForm.actorTypeLabel}
-                  onChange={event => setSystemForm(prev => ({ ...prev, actorTypeLabel: event.target.value }))}
-                  placeholder="Personagem, NPC, Criatura..."
-                />
-              </label>
+              <datalist id="system-section-presets">
+                {SYSTEM_SECTION_PRESETS.map(section => (
+                  <option key={section} value={section} />
+                ))}
+              </datalist>
+
+              <section className={styles.creatorPanel}>
+                <div className={styles.creatorPanelHeader}>
+                  <div>
+                    <span className={styles.formLabel}>Tipos de ator</span>
+                    <small>Personagem, NPC, monstro ou qualquer outro documento que o sistema permitir criar.</small>
+                  </div>
+                  <button className={styles.systemActionBtn} type="button" onClick={addActorType}>
+                    Adicionar tipo
+                  </button>
+                </div>
+                <div className={styles.actorTypeTabs}>
+                  {systemForm.actorTypes.map((actorType, index) => (
+                    <button
+                      key={`${actorType.id}-${index}`}
+                      className={`${styles.actorTypeTab} ${index === activeActorTypeIndex ? styles.actorTypeTabActive : ''}`}
+                      type="button"
+                      onClick={() => setActiveActorTypeIndex(index)}
+                    >
+                      <strong>{actorType.label || `Ator ${index + 1}`}</strong>
+                      <span>{actorType.fields.length} campos</span>
+                    </button>
+                  ))}
+                </div>
+                {activeSystemActorType && (
+                  <>
+                    <div className={styles.formGrid}>
+                      <label className={styles.formRow}>
+                        <span className={styles.formLabel}>Nome do tipo</span>
+                        <input
+                          className={styles.formInput}
+                          value={activeSystemActorType.label}
+                          onChange={event => updateActorType(activeActorTypeIndex, {
+                            label: event.target.value,
+                            id: fieldId(event.target.value, activeSystemActorType.id),
+                          })}
+                        />
+                      </label>
+                      <label className={styles.formRow}>
+                        <span className={styles.formLabel}>ID do tipo</span>
+                        <input
+                          className={styles.formInput}
+                          value={activeSystemActorType.id}
+                          onChange={event => updateActorType(activeActorTypeIndex, { id: fieldId(event.target.value, activeSystemActorType.id) })}
+                        />
+                      </label>
+                    </div>
+                    <div className={styles.inlineActions}>
+                      <button className={styles.systemActionBtn} type="button" onClick={() => duplicateActorType(activeActorTypeIndex)}>
+                        Duplicar tipo
+                      </button>
+                      <button
+                        className={styles.systemDeleteBtn}
+                        type="button"
+                        onClick={() => removeActorType(activeActorTypeIndex)}
+                        disabled={systemForm.actorTypes.length <= 1}
+                      >
+                        Apagar tipo
+                      </button>
+                    </div>
+                  </>
+                )}
+              </section>
+
               <section className={styles.fieldBuilder}>
                 <div className={styles.fieldBuilderHeader}>
                   <div>
                     <span className={styles.formLabel}>Campos da ficha</span>
-                    <p>Estes campos vao para o `system.json`; cada secao vira uma aba da ficha no mobile.</p>
+                    <p>Estes campos vao para o `system.json`; cada secao vira uma aba da ficha no desktop e no mobile.</p>
                   </div>
                   <button className={styles.systemActionBtn} type="button" onClick={addSystemField}>
                     Adicionar campo
                   </button>
                 </div>
-                <div className={styles.sectionPreview}>
-                  <span>Abas geradas</span>
-                  <div>
-                    {systemSectionPreview.map(section => (
-                      <strong key={section}>{section}</strong>
+                <div className={styles.builderSplit}>
+                  <div className={styles.sectionPreview}>
+                    <span>Abas geradas</span>
+                    <div>
+                      {systemSectionPreview.map(section => (
+                        <strong key={section}>{section}</strong>
+                      ))}
+                    </div>
+                  </div>
+                  <div className={styles.sheetPreview}>
+                    <span>Previa da ficha</span>
+                    <strong>{activeSystemActorType?.label || 'Ator'}</strong>
+                    {systemSectionPreview.slice(0, 4).map(section => (
+                      <div key={section}>
+                        <b>{section}</b>
+                        <small>
+                          {(activeSystemActorType?.fields || [])
+                            .filter(field => field.section === section)
+                            .slice(0, 4)
+                            .map(field => field.label)
+                            .join(', ') || 'Sem campos'}
+                        </small>
+                      </div>
                     ))}
                   </div>
                 </div>
-                <datalist id="system-section-presets">
-                  {SYSTEM_SECTION_PRESETS.map(section => (
-                    <option key={section} value={section} />
-                  ))}
-                </datalist>
-                <div className={styles.fieldBuilderRows}>
-                  {systemForm.actorFields.map((field, index) => (
-                    <div className={styles.fieldBuilderRow} key={`${field.id}-${index}`}>
-                      <label>
-                        <span>Rotulo</span>
-                        <input
-                          className={styles.formInput}
-                          value={field.label}
-                          onChange={event => updateSystemField(index, {
-                            label: event.target.value,
-                            id: fieldId(event.target.value, field.id),
-                          })}
-                        />
-                      </label>
-                      <label>
-                        <span>ID</span>
-                        <input
-                          className={styles.formInput}
-                          value={field.id}
-                          onChange={event => updateSystemField(index, { id: fieldId(event.target.value, field.id) })}
-                        />
-                      </label>
-                      <label>
-                        <span>Tipo</span>
-                        <select
-                          className={styles.formSelect}
-                          value={field.type}
-                          onChange={event => updateSystemField(index, { type: event.target.value as SystemFieldType })}
-                        >
-                          {FIELD_TYPES.map(type => (
-                            <option key={type} value={type}>{type}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        <span>Padrao</span>
-                        {field.type === 'checkbox' ? (
-                          <span className={styles.builderCheck}>
-                            <input
-                              type="checkbox"
-                              checked={Boolean(field.default_value)}
-                              onChange={event => updateSystemField(index, { default_value: event.target.checked })}
-                            />
-                            Ligado
-                          </span>
-                        ) : (
-                          <input
-                            className={styles.formInput}
-                            type={field.type === 'number' ? 'number' : 'text'}
-                            value={String(field.default_value ?? '')}
-                            onChange={event => updateSystemField(index, { default_value: parseDefaultValue(field.type, event.target.value) })}
-                          />
-                        )}
-                      </label>
-                      <label>
-                        <span>Secao</span>
-                        <input
-                          className={styles.formInput}
-                          list="system-section-presets"
-                          value={field.section}
-                          onChange={event => updateSystemField(index, { section: event.target.value })}
-                        />
-                      </label>
-                      <label>
-                        <span>Rolagem</span>
-                        <input
-                          className={styles.formInput}
-                          value={field.roll_formula || ''}
-                          onChange={event => updateSystemField(index, { roll_formula: event.target.value })}
-                          placeholder="1d20 + @campo.mod"
-                        />
-                      </label>
-                      <button
-                        className={styles.fieldRemoveBtn}
-                        type="button"
-                        onClick={() => removeSystemField(index)}
-                        disabled={systemForm.actorFields.length <= 1}
-                      >
-                        Apagar
-                      </button>
-                    </div>
-                  ))}
+                {renderFieldRows(activeSystemActorType?.fields || [], updateSystemField, removeSystemField)}
+              </section>
+
+              <section className={styles.creatorPanel}>
+                <div className={styles.creatorPanelHeader}>
+                  <div>
+                    <span className={styles.formLabel}>Tipos de item do sistema</span>
+                    <small>Define o manifesto de arma, magia, equipamento e condicao para a proxima etapa de inventario/compendio.</small>
+                  </div>
+                  <button className={styles.systemActionBtn} type="button" onClick={addItemType}>
+                    Adicionar item
+                  </button>
                 </div>
+                {systemForm.itemTypes.length > 0 ? (
+                  <>
+                    <div className={styles.actorTypeTabs}>
+                      {systemForm.itemTypes.map((itemType, index) => (
+                        <button
+                          key={`${itemType.id}-${index}`}
+                          className={`${styles.actorTypeTab} ${index === activeItemTypeIndex ? styles.actorTypeTabActive : ''}`}
+                          type="button"
+                          onClick={() => setActiveItemTypeIndex(index)}
+                        >
+                          <strong>{itemType.label || `Item ${index + 1}`}</strong>
+                          <span>{itemType.fields.length} campos</span>
+                        </button>
+                      ))}
+                    </div>
+                    {activeSystemItemType && (
+                      <>
+                        <div className={styles.formGrid}>
+                          <label className={styles.formRow}>
+                            <span className={styles.formLabel}>Nome do item</span>
+                            <input
+                              className={styles.formInput}
+                              value={activeSystemItemType.label}
+                              onChange={event => updateItemType(activeItemTypeIndex, {
+                                label: event.target.value,
+                                id: fieldId(event.target.value, activeSystemItemType.id),
+                              })}
+                            />
+                          </label>
+                          <label className={styles.formRow}>
+                            <span className={styles.formLabel}>ID do item</span>
+                            <input
+                              className={styles.formInput}
+                              value={activeSystemItemType.id}
+                              onChange={event => updateItemType(activeItemTypeIndex, { id: fieldId(event.target.value, activeSystemItemType.id) })}
+                            />
+                          </label>
+                        </div>
+                        <div className={styles.inlineActions}>
+                          <button className={styles.systemActionBtn} type="button" onClick={addItemField}>
+                            Adicionar campo do item
+                          </button>
+                          <button className={styles.systemDeleteBtn} type="button" onClick={() => removeItemType(activeItemTypeIndex)}>
+                            Apagar tipo de item
+                          </button>
+                        </div>
+                        <div className={styles.sectionPreview}>
+                          <span>Secoes do item</span>
+                          <div>
+                            {itemSectionPreview.map(section => (
+                              <strong key={section}>{section}</strong>
+                            ))}
+                          </div>
+                        </div>
+                        {renderFieldRows(activeSystemItemType.fields || [], updateItemField, removeItemField, 0)}
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className={styles.emptyMini}>
+                    Nenhum tipo de item definido. O sistema ainda pode criar atores, mas nao tera manifesto de itens.
+                  </div>
+                )}
               </section>
               <label className={styles.formRow}>
                 <span className={styles.formLabel}>Descricao</span>

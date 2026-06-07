@@ -94,8 +94,12 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - [feito-base] Criar validador de manifesto de sistema.
 - [feito-base] Criar motor seguro de formulas declarativas.
 - Fazer ficha D&D Lite ser renderizada por manifesto, nao por campos hardcoded.
+- [feito-base] Criador visual com multiplos tipos de ator por sistema.
+- [feito-base] Criador visual com tipos de item e campos de item no manifesto.
+- [feito-base] Preview simples das abas da ficha no criador de sistema.
+- [feito-base] Importar/exportar sistemas em JSON pelo launcher.
 - Criar schema de abas/layout do sistema alem do agrupamento simples por `section`.
-- Criar tipos de ator e item avancados por sistema, incluindo `Personagem`, `NPC`, `Item`, `Magia` e `Condicao`.
+- Criar entidades reais de item/inventario/magia/condicao dentro do mundo, consumindo `item_types` do sistema.
 
 ## P4.5 - Mapa, visao e paredes
 

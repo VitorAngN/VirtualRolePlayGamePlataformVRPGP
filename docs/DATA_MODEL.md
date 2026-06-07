@@ -73,6 +73,27 @@ Estrutura inicial de `actor_types`:
 ]
 ```
 
+Estrutura inicial de `item_types`:
+
+```json
+[
+  {
+    "id": "weapon",
+    "label": "Arma",
+    "fields": [
+      {
+        "id": "damage",
+        "label": "Dano",
+        "type": "text",
+        "section": "Uso",
+        "default_value": "1d6",
+        "roll_formula": "@damage"
+      }
+    ]
+  }
+]
+```
+
 Tipos de campo aceitos na 0.1:
 
 - `text`
@@ -83,6 +104,8 @@ Tipos de campo aceitos na 0.1:
 `roll_formula` e opcional. Quando preenchido, define uma rolagem segura para aquele campo, por exemplo `1d20 + @str.mod`.
 
 `section` agrupa campos na ficha. No desktop e no mobile, cada secao distinta pode virar uma aba de ficha. Exemplos atuais: `Identidade`, `Combate`, `Atributos`, `Salvaguardas`, `Pericias`, `Acoes`, `Inventario`, `Magias`, `Tracos` e `Notas`.
+
+O criador visual de sistemas ja salva multiplos `actor_types` e `item_types`, com import/export de JSON. A criacao de itens reais dentro do mundo ainda deve vir depois e consumir esses tipos de item.
 
 ## Actor
 

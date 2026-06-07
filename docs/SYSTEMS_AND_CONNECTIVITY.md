@@ -27,11 +27,13 @@ Na versao inicial, um sistema deve ser declarativo:
 
 Nao vamos executar JavaScript livre na 0.1. Isso evita uma camada perigosa e dificil de depurar. Quando a base estiver madura, pode existir uma versao avancada com scripts sandboxados.
 
-O usuario nao precisa escrever JSON para comecar. O launcher possui um criador visual de sistemas que aplica templates, permite adicionar/remover campos e grava o `system.json` automaticamente. O JSON continua sendo o formato interno e o modo avancado de edicao.
+O usuario nao precisa escrever JSON para comecar. O launcher possui um criador visual de sistemas que aplica templates, permite adicionar/remover campos, trabalha com multiplos tipos de ator, registra tipos de item e grava o `system.json` automaticamente. O JSON continua sendo o formato interno e o modo avancado de edicao.
 
 Cada campo da ficha pode ter uma formula opcional em `roll_formula`. Quando essa formula existe, o companion mobile pode transformar o campo em botao de rolagem, desde que a sessao tenha permissao de rolar dados.
 
 Cada campo tambem possui uma `section`. Na versao atual, as secoes viram abas da ficha no desktop/mobile. Isso permite que um sistema criado visualmente tenha abas como `Identidade`, `Combate`, `Atributos`, `Inventario`, `Magias`, `Tracos` e `Notas` sem escrever codigo.
+
+O criador visual tambem mostra uma previa simples das abas geradas para o tipo de ator ativo. Essa previa nao substitui a ficha real; ela serve para validar a estrutura antes de salvar o manifesto.
 
 Templates iniciais:
 
@@ -46,8 +48,12 @@ O manifesto passa por validacao antes de ser salvo. A validacao barra:
 - IDs duplicados de tipo de ator;
 - ficha sem campos;
 - IDs duplicados de campo dentro do mesmo tipo de ator;
+- IDs duplicados de tipo de item;
+- campos invalidos dentro de tipos de item;
 - tipo de campo invalido;
 - grid sem distancia valida ou sem unidade.
+
+O launcher permite exportar um sistema para JSON e importar um JSON de sistema. A importacao cria um novo pacote local em `saves/systems/{systemId}/`, validado antes de entrar na lista.
 
 ## Estrutura proposta de pacote
 
@@ -253,5 +259,5 @@ Permissoes iniciais:
 11. [feito-base] Permitir edicao mobile de campos da ficha via manifesto.
 12. [feito-base] Permitir chat mobile persistido.
 13. [feito-base] Gerar abas mobile a partir das secoes dos campos do sistema.
-14. Criar import/export de sistema pelo launcher.
+14. [feito-base] Criar import/export de sistema pelo launcher.
 15. Criar conexao externa assistida por tunel.

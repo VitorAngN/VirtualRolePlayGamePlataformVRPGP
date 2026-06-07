@@ -36,6 +36,12 @@ export interface ApiSystemActorType {
   fields: ApiSystemField[]
 }
 
+export interface ApiSystemItemType {
+  id: string
+  label: string
+  fields: ApiSystemField[]
+}
+
 export interface ApiGameSystem {
   id: string
   name: string
@@ -45,7 +51,7 @@ export interface ApiGameSystem {
   package_path?: string
   manifest_path?: string
   actor_types: ApiSystemActorType[]
-  item_types?: unknown[]
+  item_types?: ApiSystemItemType[]
   primary_token_attribute?: string
   grid?: {
     distance: number
@@ -59,7 +65,7 @@ export interface CreateSystemPayload {
   version?: string
   description?: string
   actor_types?: ApiSystemActorType[]
-  item_types?: unknown[]
+  item_types?: ApiSystemItemType[]
   primary_token_attribute?: string
   grid?: {
     distance: number
