@@ -16,6 +16,8 @@ interface ItemEditDialogProps {
   item?: ApiItem | null
   system: ApiGameSystem | null
   actors: ApiActor[]
+  initialActorId?: string
+  initialTypeId?: string
   onClose: () => void
   onCreateItem: (payload: CreateItemPayload) => Promise<ApiItem>
   onPatchItem: (itemId: string, payload: Partial<ApiItem>) => Promise<ApiItem>
@@ -64,6 +66,8 @@ export default function ItemEditDialog({
   item,
   system,
   actors,
+  initialActorId = '',
+  initialTypeId = '',
   onClose,
   onCreateItem,
   onPatchItem,
@@ -71,11 +75,11 @@ export default function ItemEditDialog({
 }: ItemEditDialogProps) {
   const itemTypes = system?.item_types?.length ? system.item_types : []
   const canEditItems = itemTypes.length > 0
-  const initialType = itemTypeFrom(system, item?.type)
+  const initialType = itemTypeFrom(system, item?.type || initialTypeId)
   const [typeId, setTypeId] = useState(initialType.id)
   const itemType = itemTypeFrom(system, typeId)
   const [name, setName] = useState(item?.name || '')
-  const [actorId, setActorId] = useState(item?.actor_id || '')
+  const [actorId, setActorId] = useState(item?.actor_id || initialActorId)
   const [quantity, setQuantity] = useState(String(item?.quantity ?? item?.data?.quantity ?? 1))
   const [equipped, setEquipped] = useState(Boolean(item?.equipped))
   const [values, setValues] = useState<ItemData>(() => dataFor(item, itemType))

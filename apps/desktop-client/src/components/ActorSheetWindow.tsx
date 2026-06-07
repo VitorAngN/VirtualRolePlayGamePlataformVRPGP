@@ -21,6 +21,7 @@ interface ActorSheetWindowProps {
   onClose: () => void
   onSave: (actorId: string, payload: Partial<ApiActor>) => Promise<ApiActor>
   onPatchItem: (itemId: string, payload: Partial<ApiItem>) => Promise<ApiItem>
+  onRequestCreateItem?: (initialTypeId?: string) => void
   onRoll: (payload: { speaker: string; label: string; formula: string }) => Promise<void>
 }
 
@@ -154,6 +155,23 @@ function itemTypeLabel(system: ApiGameSystem | null, item: ApiItem) {
   return itemTypeFor(system, item)?.label || item.type || 'Item'
 }
 
+function preferredItemTypeForSection(system: ApiGameSystem | null, section: string) {
+  const itemTypes = system?.item_types || []
+  if (itemTypes.length === 0) return ''
+  const sectionKey = normalizedSectionKey(section)
+
+  const preferredSignatures = sectionKey.includes('magia')
+    ? ['spell', 'magia']
+    : sectionKey.includes('traco')
+      ? ['condition', 'condicao', 'effect', 'efeito']
+      : ['equipment', 'equipamento', 'weapon', 'arma', 'item']
+
+  return itemTypes.find(itemType => {
+    const signature = normalizedSectionKey(`${itemType.id} ${itemType.label}`)
+    return preferredSignatures.some(value => signature.includes(value))
+  })?.id ?? itemTypes[0].id
+}
+
 function itemCategory(system: ApiGameSystem | null, item: ApiItem) {
   const itemType = itemTypeFor(system, item)
   const signature = `${item.type} ${itemType?.label || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -169,6 +187,9 @@ function itemIsAlwaysActive(system: ApiGameSystem | null, item: ApiItem) {
 function buildItemEffectValues(system: ApiGameSystem | null, actorItems: ApiItem[]) {
   const bonuses: Record<string, number> = {}
   const minimums: Record<string, number> = {}
+  const maximums: Record<string, number> = {}
+  const overrides: Record<string, number> = {}
+  const multipliers: Record<string, number> = {}
 
   for (const item of actorItems) {
     const data = item.data || {}
@@ -184,21 +205,36 @@ function buildItemEffectValues(system: ApiGameSystem | null, actorItems: ApiItem
         bonuses[target] = (bonuses[target] || 0) + value
       }
 
+      if (key.startsWith('set_') && value !== 0) {
+        const target = key.slice('set_'.length)
+        overrides[target] = value
+      }
+
       if (key === 'armor_class') {
         minimums.ac = Math.max(minimums.ac || 0, value)
       }
 
-      if (key.startsWith('min_')) {
+      if (key.startsWith('min_') && value !== 0) {
         const target = key.slice('min_'.length)
         minimums[target] = Math.max(minimums[target] || 0, value)
+      }
+
+      if (key.startsWith('max_') && value !== 0) {
+        const target = key.slice('max_'.length)
+        maximums[target] = maximums[target] === undefined ? value : Math.min(maximums[target], value)
+      }
+
+      if (key.startsWith('multiply_') && value !== 0 && value !== 1) {
+        const target = key.slice('multiply_'.length)
+        multipliers[target] = (multipliers[target] || 1) * value
       }
     }
   }
 
-  return { bonuses, minimums }
+  return { bonuses, minimums, maximums, overrides, multipliers }
 }
 
-export default function ActorSheetWindow({ actor, system, items, onClose, onSave, onPatchItem, onRoll }: ActorSheetWindowProps) {
+export default function ActorSheetWindow({ actor, system, items, onClose, onSave, onPatchItem, onRequestCreateItem, onRoll }: ActorSheetWindowProps) {
   const actorTypes = system?.actor_types?.length ? system.actor_types : [FALLBACK_ACTOR_TYPE]
   const actorType = actorTypes.find(type => type.id === actor.type) ?? actorTypes[0]
   const actorItems = useMemo(
@@ -259,11 +295,16 @@ export default function ActorSheetWindow({ actor, system, items, onClose, onSave
     const numericRawValue = Number(rawValue)
     const hasNumericRawValue = Number.isFinite(numericRawValue)
     const minimum = itemEffects.minimums[id]
+    const maximum = itemEffects.maximums[id]
+    const override = itemEffects.overrides[id]
+    const multiplier = itemEffects.multipliers[id] ?? 1
     const bonus = itemEffects.bonuses[id] || 0
 
-    if (hasNumericRawValue || minimum !== undefined || bonus !== 0) {
-      const base = Math.max(hasNumericRawValue ? numericRawValue : 0, minimum ?? Number.NEGATIVE_INFINITY)
-      return base + bonus
+    if (hasNumericRawValue || minimum !== undefined || maximum !== undefined || override !== undefined || bonus !== 0 || multiplier !== 1) {
+      let base = override ?? (hasNumericRawValue ? numericRawValue : 0)
+      if (minimum !== undefined) base = Math.max(base, minimum)
+      if (maximum !== undefined) base = Math.min(base, maximum)
+      return base * multiplier + bonus
     }
 
     return rawValue
@@ -581,8 +622,18 @@ export default function ActorSheetWindow({ actor, system, items, onClose, onSave
     return (
       <div className={styles.attachedItems}>
         <div className={styles.attachedItemsHeader}>
-          <span>Itens anexados</span>
-          <small>{activeSectionItems.length}</small>
+          <div>
+            <span>Itens anexados</span>
+            <small>{activeSectionItems.length}</small>
+          </div>
+          {mode === 'edit' && onRequestCreateItem && (
+            <button
+              type="button"
+              onClick={() => onRequestCreateItem(preferredItemTypeForSection(system, activeSection))}
+            >
+              Criar nesta aba
+            </button>
+          )}
         </div>
 
         {activeSectionItems.length === 0 && (

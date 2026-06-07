@@ -1,4 +1,4 @@
-import type { ApiActor, ApiGameSystem, ApiItem } from '../services/vttApi'
+import type { ApiActor, ApiCompendiumItem, ApiGameSystem, ApiItem } from '../services/vttApi'
 import styles from './ItemsPanel.module.css'
 
 interface ItemsPanelProps {
@@ -8,6 +8,8 @@ interface ItemsPanelProps {
   actors: ApiActor[]
   system: ApiGameSystem | null
   onRequestCreateItem: () => void
+  onCreateFromCompendium: (item: ApiCompendiumItem) => void
+  onSaveItemToCompendium: (item: ApiItem) => void
   onEditItem: (item: ApiItem) => void
   onAttachItem: (item: ApiItem, actorId: string) => void
   onDeleteItem: (item: ApiItem) => void
@@ -29,6 +31,8 @@ export default function ItemsPanel({
   actors,
   system,
   onRequestCreateItem,
+  onCreateFromCompendium,
+  onSaveItemToCompendium,
   onEditItem,
   onAttachItem,
   onDeleteItem,
@@ -54,6 +58,23 @@ export default function ItemsPanel({
         )}
       </div>
 
+      {canCreateItems && Boolean(system?.compendium_items?.length) && (
+        <section className={styles.compendiumBox}>
+          <div className={styles.compendiumHeader}>
+            <span>Compendio do sistema</span>
+            <small>{system?.compendium_items?.length || 0}</small>
+          </div>
+          <div className={styles.compendiumList}>
+            {system?.compendium_items?.map(item => (
+              <button key={item.id} type="button" onClick={() => onCreateFromCompendium(item)}>
+                <strong>{item.name}</strong>
+                <span>{itemTypeLabel(system, item.type)}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className={styles.itemList}>
         {items.length === 0 && (
           <div className={styles.emptyState}>
@@ -63,7 +84,16 @@ export default function ItemsPanel({
         )}
 
         {items.map(item => (
-          <article className={styles.itemCard} key={item.id}>
+          <article
+            className={`${styles.itemCard} ${styles.itemCardDraggable}`}
+            key={item.id}
+            draggable
+            onDragStart={event => {
+              event.dataTransfer.effectAllowed = 'copy'
+              event.dataTransfer.setData('application/x-vtt-item-id', item.id)
+              event.dataTransfer.setData('text/plain', item.name)
+            }}
+          >
             <button className={styles.itemMain} type="button" onClick={() => onEditItem(item)}>
               <span className={styles.itemIcon}>{item.name.slice(0, 1).toUpperCase() || '?'}</span>
               <span className={styles.itemInfo}>
@@ -88,6 +118,9 @@ export default function ItemsPanel({
                   <option key={actor.id} value={actor.id}>{actor.name}</option>
                 ))}
               </select>
+              <button type="button" onClick={() => onSaveItemToCompendium(item)} disabled={!canCreateItems}>
+                Comp.
+              </button>
               <button type="button" onClick={() => onDeleteItem(item)}>
                 Apagar
               </button>

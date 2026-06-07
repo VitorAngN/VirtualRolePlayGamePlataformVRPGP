@@ -21,6 +21,7 @@ Na versao inicial, um sistema deve ser declarativo:
 - campos de ficha;
 - tipos de ator;
 - tipos de item;
+- compendios simples de itens prontos;
 - formulas de rolagem;
 - secoes de UI;
 - regras simples de derivacao, como modificador de atributo e bonus de proficiencia.
@@ -54,6 +55,8 @@ O manifesto passa por validacao antes de ser salvo. A validacao barra:
 - grid sem distancia valida ou sem unidade.
 
 O launcher permite exportar um sistema para JSON e importar um JSON de sistema. A importacao cria um novo pacote local em `saves/systems/{systemId}/`, validado antes de entrar na lista.
+
+O JSON exportado tambem preserva `compendium_items`, ou seja, modelos de arma, magia, equipamento ou condicao que podem ser instanciados em mundos que usam aquele sistema.
 
 ## Estrutura proposta de pacote
 
@@ -143,6 +146,19 @@ O `saves/index.json` mantem a lista resumida de sistemas instalados. Cada pacote
       ]
     }
   ],
+  "compendium_items": [
+    {
+      "id": "espada_longa",
+      "type": "weapon",
+      "name": "Espada longa",
+      "quantity": 1,
+      "equipped": false,
+      "data": {
+        "damage": "1d8",
+        "damage_type": "cortante"
+      }
+    }
+  ],
   "rolls": {
     "ability_check": "1d20 + @str.mod",
     "raw_check": "1d20 + @proficiency_bonus"
@@ -187,6 +203,10 @@ O sistema declara tipos de item:
 
 Na base atual, o mundo ja cria documentos reais de item no `world.json`. O usuario pode criar um item pelo painel direito, editar os campos definidos pelo sistema, anexar o item a uma ficha, equipar/guardar e visualizar esse item dentro da janela da ficha.
 
+Tambem e possivel criar item diretamente pela ficha desktop em modo edicao. O botao da aba atual abre o modal central de item ja anexado ao ator e com um tipo inicial sugerido pelo sistema, por exemplo magia em `Magias` ou condicao em `Tracos`.
+
+O painel de itens tambem le `system.compendium_items`. Um item criado no mundo pode ser salvo como modelo de compendio do sistema, e modelos de compendio podem gerar novos itens reais no `world.json`.
+
 Mapeamento inicial dentro da ficha:
 
 - armas, armaduras e equipamentos aparecem em `Inventario`;
@@ -198,9 +218,12 @@ Efeitos simples ja existem por convencao declarativa:
 - `bonus_ac`, `bonus_str`, `bonus_dex`, `bonus_con`, `bonus_int`, `bonus_wis`, `bonus_cha` somam ao campo correspondente quando o item esta equipado/ativo;
 - `bonus_attack_bonus` soma ao campo `attack_bonus`;
 - `armor_class` em armaduras equipadas define uma CA base minima;
+- `set_*`, `min_*`, `max_*` e `multiply_*` permitem regras declarativas simples sem executar JavaScript;
 - campos de item com `roll_formula`, como `@damage`, viram botoes de rolagem na ficha.
 
-Ainda falta transformar inventario, magias e compendios em colecoes mais ricas com drag/drop, pastas, importacao de pacotes e regras derivadas mais completas.
+O canvas tambem aceita arrastar uma ficha da aba de atores para criar um token persistido com `actor_id`, ou arrastar item para representar o documento na cena com `item_id`.
+
+Ainda falta transformar compendios em colecoes mais ricas com pastas, pacotes compartilhaveis e regras derivadas mais completas.
 
 ## Desktop como host
 
@@ -299,4 +322,5 @@ Permissoes iniciais:
 13. [feito-base] Gerar abas mobile a partir das secoes dos campos do sistema.
 14. [feito-base] Criar import/export de sistema pelo launcher.
 15. [feito-base] Criar entidades reais de item no mundo e anexar itens a ficha.
-16. Criar conexao externa assistida por tunel.
+16. [feito-base] Arrastar ator/item para a cena criando token vinculado.
+17. Criar conexao externa assistida por tunel.

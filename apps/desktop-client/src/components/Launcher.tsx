@@ -9,6 +9,7 @@ import {
   openSystemFolder,
   patchSystem,
   patchWorld,
+  type ApiCompendiumItem,
   type ApiGameSystem,
   type ApiSystemActorType,
   type ApiSystemField,
@@ -201,10 +202,11 @@ const DEFAULT_ITEM_TYPES: ApiSystemItemType[] = [
     id: 'armor',
     label: 'Armadura',
     fields: [
-      { id: 'armor_class', label: 'CA base', type: 'number', section: 'Uso', default_value: 10 },
-      { id: 'bonus_ac', label: 'Bonus de CA', type: 'number', section: 'Efeitos', default_value: 0 },
-      { id: 'properties', label: 'Propriedades', type: 'text', section: 'Uso', default_value: '' },
-      { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
+        { id: 'armor_class', label: 'CA base', type: 'number', section: 'Uso', default_value: 10 },
+        { id: 'bonus_ac', label: 'Bonus de CA', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'set_ac', label: 'Definir CA', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'properties', label: 'Propriedades', type: 'text', section: 'Uso', default_value: '' },
+        { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
     ],
   },
   {
@@ -228,6 +230,7 @@ const DEFAULT_ITEM_TYPES: ApiSystemItemType[] = [
       { id: 'bonus_ac', label: 'Bonus de CA', type: 'number', section: 'Efeitos', default_value: 0 },
       { id: 'bonus_str', label: 'Bonus de Forca', type: 'number', section: 'Efeitos', default_value: 0 },
       { id: 'bonus_dex', label: 'Bonus de Destreza', type: 'number', section: 'Efeitos', default_value: 0 },
+      { id: 'bonus_speed', label: 'Bonus de deslocamento', type: 'number', section: 'Efeitos', default_value: 0 },
       { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
     ],
   },
@@ -244,6 +247,9 @@ const DEFAULT_ITEM_TYPES: ApiSystemItemType[] = [
       { id: 'bonus_int', label: 'Bonus de Inteligencia', type: 'number', section: 'Efeitos', default_value: 0 },
       { id: 'bonus_wis', label: 'Bonus de Sabedoria', type: 'number', section: 'Efeitos', default_value: 0 },
       { id: 'bonus_cha', label: 'Bonus de Carisma', type: 'number', section: 'Efeitos', default_value: 0 },
+      { id: 'set_speed', label: 'Definir deslocamento', type: 'number', section: 'Efeitos', default_value: 0 },
+      { id: 'max_speed', label: 'Limite max. deslocamento', type: 'number', section: 'Efeitos', default_value: 0 },
+      { id: 'multiply_speed', label: 'Multiplicar deslocamento', type: 'number', section: 'Efeitos', default_value: 1 },
     ],
   },
 ]
@@ -334,6 +340,25 @@ function cloneItemTypes(itemTypes: ApiSystemItemType[] = []) {
     label: String(itemType.label || itemType.id || `Item ${index + 1}`),
     fields: cloneActorFields(itemType.fields || []),
   }))
+}
+
+function cloneCompendiumItems(items: ApiCompendiumItem[] = [], itemTypes: ApiSystemItemType[] = []) {
+  if (itemTypes.length === 0) return []
+
+  return items
+    .map((item, index) => {
+      const itemType = itemTypes.find(type => type.id === item.type) ?? itemTypes[0]
+      const name = String(item.name || `Item ${index + 1}`).trim() || `Item ${index + 1}`
+      return {
+        id: fieldId(item.id || name, `compendium_item_${index + 1}`),
+        type: itemType.id,
+        name,
+        data: item.data || {},
+        equipped: Boolean(item.equipped),
+        quantity: Number.isFinite(Number(item.quantity)) ? Number(item.quantity) : 1,
+      }
+    })
+    .filter(item => item.id && item.name)
 }
 
 function sectionNames(fields: ApiSystemField[]) {
@@ -1076,9 +1101,14 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
     setCreatingSystem(true)
     try {
       const raw = JSON.parse(await file.text()) as Partial<ApiGameSystem>
-      const rawManifest = raw as Partial<ApiGameSystem> & { actorTypes?: ApiSystemActorType[]; itemTypes?: ApiSystemItemType[] }
+      const rawManifest = raw as Partial<ApiGameSystem> & {
+        actorTypes?: ApiSystemActorType[]
+        itemTypes?: ApiSystemItemType[]
+        compendiumItems?: ApiCompendiumItem[]
+      }
       const actorTypes = normalizeActorTypesForSave(cloneActorTypes(rawManifest.actor_types || rawManifest.actorTypes || []))
       const itemTypes = normalizeItemTypesForSave(cloneItemTypes(rawManifest.item_types || rawManifest.itemTypes || []))
+      const compendiumItems = cloneCompendiumItems(rawManifest.compendium_items || rawManifest.compendiumItems || [], itemTypes)
       const name = String(raw.name || file.name.replace(/\.json$/i, '')).trim()
       const gridDistance = String(raw.grid?.distance ?? 5)
       const gridUnits = String(raw.grid?.units || 'ft')
@@ -1096,6 +1126,7 @@ export default function Launcher({ onEnterWorld }: LauncherProps) {
         description: String(raw.description || ''),
         actor_types: actorTypes,
         item_types: itemTypes,
+        compendium_items: compendiumItems,
         primary_token_attribute: raw.primary_token_attribute || 'hp',
         grid: {
           distance: Number(gridDistance) || 5,

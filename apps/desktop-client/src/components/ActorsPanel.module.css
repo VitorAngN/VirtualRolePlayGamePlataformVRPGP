@@ -208,6 +208,14 @@
   background: rgba(230,145,56,0.08);
 }
 
+.actorCardDraggable {
+  cursor: grab;
+}
+
+.actorCardDraggable:active {
+  cursor: grabbing;
+}
+
 .actorMain {
   display: grid;
   grid-template-columns: 32px 1fr;

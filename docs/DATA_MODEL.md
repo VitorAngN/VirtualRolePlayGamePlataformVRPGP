@@ -36,6 +36,7 @@ Campos principais:
 - `description`
 - `actor_types`
 - `item_types`
+- `compendium_items`
 - `primary_token_attribute`
 - `grid`
 - `created_at`
@@ -46,6 +47,7 @@ Regras iniciais:
 - fica salvo como pacote local em `saves/systems/{systemId}/system.json`;
 - `saves/index.json` guarda apenas o resumo do sistema e o caminho do pacote;
 - define manifestos simples de ficha, com tipos de ator, tipos de item e campos;
+- pode guardar `compendium_items`, que sao modelos de item do sistema para instanciar em mundos;
 - nao cria mundo, cena, mapa, token ou ator automaticamente;
 - pode ser vinculado a um mundo no momento da criacao;
 - quando um mundo usa um sistema, o `world.json` tambem guarda o manifesto aplicado;
@@ -94,6 +96,24 @@ Estrutura inicial de `item_types`:
 ]
 ```
 
+Estrutura inicial de `compendium_items`:
+
+```json
+[
+  {
+    "id": "espada_longa",
+    "type": "weapon",
+    "name": "Espada longa",
+    "quantity": 1,
+    "equipped": false,
+    "data": {
+      "damage": "1d8",
+      "damage_type": "cortante"
+    }
+  }
+]
+```
+
 Tipos de campo aceitos na 0.1:
 
 - `text`
@@ -105,9 +125,16 @@ Tipos de campo aceitos na 0.1:
 
 `section` agrupa campos na ficha. No desktop e no mobile, cada secao distinta pode virar uma aba de ficha. Exemplos atuais: `Identidade`, `Combate`, `Atributos`, `Salvaguardas`, `Pericias`, `Acoes`, `Inventario`, `Magias`, `Tracos` e `Notas`.
 
-O criador visual de sistemas ja salva multiplos `actor_types` e `item_types`, com import/export de JSON. Os itens reais criados dentro do mundo consomem esses tipos de item e ficam persistidos em `world.json`.
+O criador visual de sistemas ja salva multiplos `actor_types` e `item_types`, com import/export de JSON. Os itens reais criados dentro do mundo consomem esses tipos de item e ficam persistidos em `world.json`. Itens do mundo podem ser salvos como modelos no compendio do sistema, e o painel de itens consegue instanciar esses modelos no mundo ativo.
 
-Campos de item com `roll_formula` viram acoes clicaveis quando o item esta anexado a uma ficha. Campos numericos com prefixo `bonus_` sao tratados como efeitos simples quando o item esta equipado/ativo, por exemplo `bonus_ac`, `bonus_str` ou `bonus_attack_bonus`. O campo `armor_class`, quando usado em uma armadura equipada, define uma CA base minima.
+Campos de item com `roll_formula` viram acoes clicaveis quando o item esta anexado a uma ficha. Campos numericos com prefixos declarativos sao tratados como efeitos quando o item esta equipado/ativo:
+
+- `bonus_*`: soma ao campo alvo, por exemplo `bonus_ac` ou `bonus_str`;
+- `set_*`: define o campo alvo quando o valor nao for zero;
+- `min_*`: aplica minimo ao campo alvo quando o valor nao for zero;
+- `max_*`: aplica maximo ao campo alvo quando o valor nao for zero;
+- `multiply_*`: multiplica o campo alvo quando o valor for diferente de `0` e `1`;
+- `armor_class`: define uma CA base minima em armaduras equipadas.
 
 ## Actor
 
@@ -185,6 +212,7 @@ Regras iniciais:
 - `equipped` marca se o item esta equipado/ativo para efeitos simples;
 - condicoes sao consideradas ativas quando anexadas, mesmo sem `equipped`;
 - apagar uma ficha solta seus itens de volta para o mundo.
+- a ficha desktop permite criar item direto em `Inventario`, `Magias` ou `Tracos`, ja anexando ao ator aberto.
 
 Estrutura exemplo:
 
@@ -260,6 +288,8 @@ Campos principais:
 
 - `id`
 - `scene_id`
+- `actor_id`
+- `item_id`
 - `asset_id`
 - `name`
 - `x`
@@ -275,7 +305,10 @@ Regras iniciais:
 
 - `x` e `y` sao coordenadas de grid.
 - `asset_id` e opcional para permitir token sem imagem customizada.
+- `actor_id` e opcional e vincula o token a uma ficha arrastada para a cena.
+- `item_id` e opcional e permite representar item/documento solto na cena.
 - `hidden` prepara o futuro controle de visibilidade do mestre.
+- quando uma ficha ou item e apagado, os tokens deixam de apontar para o documento removido.
 
 ## Player
 

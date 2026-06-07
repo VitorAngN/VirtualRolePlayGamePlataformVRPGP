@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type WheelEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent, type WheelEvent } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { usePanelManager } from '../hooks/usePanelManager'
 import LeftToolbar, { type ToolId } from './LeftToolbar'
@@ -20,6 +20,7 @@ import {
   createScene,
   createSceneFolder,
   createItem,
+  createToken,
   deleteAsset,
   deleteItem,
   deleteMessage,
@@ -31,12 +32,14 @@ import {
   patchScene,
   patchActor,
   patchItem,
+  patchSystem,
   patchToken,
   resolveAssetUrl,
   uploadAsset,
   type ApiActor,
   type ApiAsset,
   type ApiChatMessage,
+  type ApiCompendiumItem,
   type ApiCompanionPermissions,
   type ApiCompanionSessionLink,
   type ApiGameSystem,
@@ -46,6 +49,7 @@ import {
   type ApiToken,
   type CreateActorPayload,
   type CreateItemPayload,
+  type CreateTokenPayload,
 } from '../services/vttApi'
 import styles from './VTT.module.css'
 
@@ -86,6 +90,8 @@ const RIGHT_TABS = [
 interface Token {
   id: string
   sceneId: string
+  actorId?: string
+  itemId?: string
   assetId?: string
   name: string
   initial: string
@@ -215,6 +221,16 @@ function getNameFromFile(file: File) {
   return file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim() || 'Asset'
 }
 
+function documentId(value: string, fallback = 'documento') {
+  return (value || fallback)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 36) || fallback
+}
+
 function parseSceneNumber(value: unknown, fallback: number) {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
@@ -324,6 +340,8 @@ function mapApiToken(token: ApiToken, index: number): Token {
   return {
     id: token.id,
     sceneId: token.scene_id,
+    actorId: token.actor_id,
+    itemId: token.item_id,
     assetId: token.asset_id,
     name: token.name,
     initial: token.name.slice(0, 1).toUpperCase() || '?',
@@ -353,6 +371,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
   const [isActorCreateOpen, setIsActorCreateOpen] = useState(false)
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<ApiItem | null>(null)
+  const [itemDialogDefaults, setItemDialogDefaults] = useState<{ actorId?: string; typeId?: string }>({})
   const [companionLink, setCompanionLink] = useState<ApiCompanionSessionLink | null>(null)
   const [companionActor, setCompanionActor] = useState<ApiActor | null>(null)
   const [companionPlayerName, setCompanionPlayerName] = useState('')
@@ -558,18 +577,21 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
     return null
   }
 
-  function screenToWorld(event: PointerEvent<HTMLElement> | WheelEvent<HTMLElement>) {
+  function clientToWorld(clientX: number, clientY: number) {
     const rect = mapRef.current?.getBoundingClientRect()
     if (!rect) return null
 
     return {
-      x: (event.clientX - rect.left - viewTransform.x) / viewTransform.scale,
-      y: (event.clientY - rect.top - viewTransform.y) / viewTransform.scale,
+      x: (clientX - rect.left - viewTransform.x) / viewTransform.scale,
+      y: (clientY - rect.top - viewTransform.y) / viewTransform.scale,
     }
   }
 
-  function pointToGrid(event: PointerEvent<HTMLElement>) {
-    const worldPoint = screenToWorld(event)
+  function screenToWorld(event: PointerEvent<HTMLElement> | WheelEvent<HTMLElement>) {
+    return clientToWorld(event.clientX, event.clientY)
+  }
+
+  function worldToGrid(worldPoint: WorldPoint | null) {
     if (!worldPoint) return null
 
     const maxX = Math.max(0, Math.ceil((sceneWidthPx - gridOffsetX) / gridSize) - 1)
@@ -578,6 +600,14 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
     const y = clamp(Math.floor((worldPoint.y - gridOffsetY) / gridSize), 0, maxY)
 
     return { x, y }
+  }
+
+  function pointToGrid(event: PointerEvent<HTMLElement>) {
+    return worldToGrid(screenToWorld(event))
+  }
+
+  function clientToGrid(clientX: number, clientY: number) {
+    return worldToGrid(clientToWorld(clientX, clientY))
   }
 
   function clampWorldPoint(point: WorldPoint) {
@@ -746,6 +776,89 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
       patchToken(movedToken.id, { x: movedToken.x, y: movedToken.y })
         .then(() => pushActivity('Token salvo', `${movedToken.name} persistido no save local.`))
         .catch(() => pushActivity('Falha ao salvar', `${movedToken.name} moveu na tela, mas nao foi gravado no disco.`))
+    }
+  }
+
+  async function createSceneToken(payload: CreateTokenPayload) {
+    const scene = requireActiveScene('Crie ou ative uma cena antes de colocar algo no mapa.')
+    if (!scene) return null
+
+    const apiToken = await createToken(scene.id, payload)
+    const token = mapApiToken(apiToken, tokensRef.current.length)
+    updateTokens(prev => [...prev.filter(item => item.id !== token.id), token])
+    setSelectedTokenId(token.id)
+    return token
+  }
+
+  function tokenPayloadFromActor(actor: ApiActor, point: { x: number; y: number }): CreateTokenPayload {
+    const data = actor.data || {}
+    const maxHp = Number(data.max_hp ?? actor.max_hp ?? 10)
+    const hp = Number(data.hp ?? actor.hp ?? maxHp)
+    const ac = Number(data.ac ?? actor.ac ?? 10)
+
+    return {
+      actor_id: actor.id,
+      asset_id: actor.portrait_asset_id || '',
+      name: actor.name,
+      x: point.x,
+      y: point.y,
+      hp: Number.isFinite(hp) ? hp : maxHp,
+      max_hp: Number.isFinite(maxHp) && maxHp > 0 ? maxHp : 10,
+      ac: Number.isFinite(ac) ? ac : 10,
+      hidden: false,
+    }
+  }
+
+  function tokenPayloadFromItem(item: ApiItem, point: { x: number; y: number }): CreateTokenPayload {
+    return {
+      item_id: item.id,
+      name: item.name,
+      x: point.x,
+      y: point.y,
+      hp: 1,
+      max_hp: 1,
+      ac: 10,
+      hidden: false,
+    }
+  }
+
+  function handleCanvasDragOver(event: DragEvent<HTMLDivElement>) {
+    if (!activeScene) return
+    if (
+      event.dataTransfer.types.includes('application/x-vtt-actor-id')
+      || event.dataTransfer.types.includes('application/x-vtt-item-id')
+    ) {
+      event.preventDefault()
+      event.dataTransfer.dropEffect = 'copy'
+    }
+  }
+
+  function handleCanvasDrop(event: DragEvent<HTMLDivElement>) {
+    if (!activeScene || isMapUiTarget(event.target)) return
+
+    const point = clientToGrid(event.clientX, event.clientY)
+    if (!point) return
+
+    const actorId = event.dataTransfer.getData('application/x-vtt-actor-id')
+    const itemId = event.dataTransfer.getData('application/x-vtt-item-id')
+
+    if (actorId) {
+      const actor = actors.find(item => item.id === actorId)
+      if (!actor) return
+      event.preventDefault()
+      createSceneToken(tokenPayloadFromActor(actor, point)).catch(() => {
+        pushActivity('Falha ao criar token', `${actor.name} nao foi salvo na cena.`)
+      })
+      return
+    }
+
+    if (itemId) {
+      const item = items.find(entry => entry.id === itemId)
+      if (!item) return
+      event.preventDefault()
+      createSceneToken(tokenPayloadFromItem(item, point)).catch(() => {
+        pushActivity('Falha ao criar token', `${item.name} nao foi salvo na cena.`)
+      })
     }
   }
 
@@ -1083,6 +1196,45 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
     })
   }
 
+  async function handleCreateItemFromCompendium(template: ApiCompendiumItem) {
+    const item = await handleCreateItem({
+      name: template.name,
+      type: template.type,
+      data: template.data || {},
+      quantity: template.quantity ?? 1,
+      equipped: false,
+    })
+    setEditingItem(item)
+    setIsItemDialogOpen(true)
+  }
+
+  async function handleSaveItemToCompendium(item: ApiItem) {
+    if (!system) return
+    const existingItems = system.compendium_items || []
+    const baseId = documentId(item.name, 'item')
+    const existingIds = new Set(existingItems.map(entry => entry.id))
+    let id = baseId
+    let suffix = 2
+    while (existingIds.has(id)) {
+      id = `${baseId}_${suffix}`
+      suffix += 1
+    }
+
+    const nextTemplate: ApiCompendiumItem = {
+      id,
+      type: item.type,
+      name: item.name,
+      data: item.data || {},
+      quantity: item.quantity ?? 1,
+      equipped: Boolean(item.equipped),
+    }
+
+    const nextSystem = await patchSystem(system.id, {
+      compendium_items: [...existingItems, nextTemplate],
+    })
+    setSystem(nextSystem)
+  }
+
   function requestDeleteItem(item: ApiItem) {
     const confirmed = window.confirm(`Apagar o item "${item.name}"?`)
     if (!confirmed) return
@@ -1091,14 +1243,16 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
     })
   }
 
-  function openItemDialog(item: ApiItem | null = null) {
+  function openItemDialog(item: ApiItem | null = null, defaults: { actorId?: string; typeId?: string } = {}) {
     setEditingItem(item)
+    setItemDialogDefaults(defaults)
     setIsItemDialogOpen(true)
   }
 
   function closeItemDialog() {
     setIsItemDialogOpen(false)
     setEditingItem(null)
+    setItemDialogDefaults({})
   }
 
   function closeCompanionDialog() {
@@ -1185,6 +1339,8 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
         onPointerUp={handleCanvasPointerEnd}
         onPointerCancel={handleCanvasPointerEnd}
         onWheel={handleWheel}
+        onDragOver={handleCanvasDragOver}
+        onDrop={handleCanvasDrop}
         onAuxClick={event => event.preventDefault()}
       >
         <div className={styles.sceneWorld} style={sceneWorldStyle}>
@@ -1221,7 +1377,9 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
 
           <div className={styles.tokensLayer} aria-label="Tokens no mapa">
             {visibleTokens.map(token => {
-              const tokenAsset = token.assetId ? assets.find(asset => asset.id === token.assetId) : undefined
+              const tokenActor = token.actorId ? actors.find(actor => actor.id === token.actorId) : undefined
+              const tokenAssetId = token.assetId || tokenActor?.portrait_asset_id || ''
+              const tokenAsset = tokenAssetId ? assets.find(asset => asset.id === tokenAssetId) : undefined
               const tokenImageUrl = tokenAsset?.content_type.startsWith('image/')
                 ? resolveAssetUrl(tokenAsset.url)
                 : ''
@@ -1261,6 +1419,9 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
                     finishDrag()
                   }}
                   title={`${token.name} - ${token.hp}/${token.maxHp} PV`}
+                  onDoubleClick={() => {
+                    if (token.actorId) setOpenActorSheetId(token.actorId)
+                  }}
                 >
                   {tokenImageUrl ? <img src={tokenImageUrl} alt="" /> : <span>{token.initial}</span>}
                 </button>
@@ -1425,6 +1586,16 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
           actors={actors}
           system={system}
           onRequestCreateItem={() => openItemDialog(null)}
+          onCreateFromCompendium={template => {
+            handleCreateItemFromCompendium(template).catch(() => {
+              pushActivity('Falha no compendio', `${template.name} nao foi criado no mundo.`)
+            })
+          }}
+          onSaveItemToCompendium={item => {
+            handleSaveItemToCompendium(item).catch(() => {
+              pushActivity('Falha no compendio', `${item.name} nao foi salvo no sistema.`)
+            })
+          }}
           onEditItem={item => openItemDialog(item)}
           onAttachItem={(item, actorId) => {
             handlePatchItem(item.id, { actor_id: actorId }).catch(() => {
@@ -1448,6 +1619,8 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
           item={editingItem}
           system={system}
           actors={actors}
+          initialActorId={itemDialogDefaults.actorId}
+          initialTypeId={itemDialogDefaults.typeId}
           onClose={closeItemDialog}
           onCreateItem={handleCreateItem}
           onPatchItem={handlePatchItem}
@@ -1464,6 +1637,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
           onClose={() => setOpenActorSheetId(null)}
           onSave={handlePatchActor}
           onPatchItem={handlePatchItem}
+          onRequestCreateItem={initialTypeId => openItemDialog(null, { actorId: openActorSheetId || undefined, typeId: initialTypeId })}
           onRoll={handleActorSheetRoll}
         />
       )}

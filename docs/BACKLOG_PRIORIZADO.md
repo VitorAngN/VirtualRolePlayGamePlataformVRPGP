@@ -35,14 +35,17 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - [feito] Bloquear criacao de mundo sem sistema cadastrado.
 - [feito] Criar e editar atores usando campos definidos pelo sistema do mundo.
 - Criar controle simples de iniciativa.
-- Arrastar ator para a cena e criar token vinculado a ficha.
-- Vincular token a ator para PV/CA/nome virem da ficha e serem atualizados juntos.
+- [feito-base] Arrastar ator para a cena e criar token vinculado a ficha.
+- [feito-base] Vincular token a ator para PV/CA/nome virem da ficha no momento da criacao.
 - Controlar token de personagem na cena com permissao por jogador.
 - Criar pastas/lista melhorada de atores.
 - Diferenciar tipos de ator `Personagem` e `NPC`, com NPC sem link mobile por padrao e controle apenas do mestre.
 - [feito-base] Criar painel real de itens do mundo.
 - [feito-base] Criar, editar, anexar, equipar e apagar item persistido no `world.json`.
 - [feito-base] Mostrar itens anexados dentro da ficha, separados por Inventario/Magias/Tracos.
+- [feito-base] Criar item direto pela ficha em modo edicao.
+- [feito-base] Arrastar item para a cena e criar token vinculado ao documento.
+- [feito-base] Criar compendio simples de itens no manifesto do sistema.
 
 ## P2 - Integracao desktop + mobile
 
@@ -103,10 +106,11 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - [feito-base] Importar/exportar sistemas em JSON pelo launcher.
 - Criar schema de abas/layout do sistema alem do agrupamento simples por `section`.
 - [feito-base] Criar entidades reais de item/inventario/magia/condicao dentro do mundo, consumindo `item_types` do sistema.
-- [feito-base] Aplicar efeitos simples por convencao `bonus_*` e `armor_class`.
-- Criar compendios locais por sistema para itens prontos.
-- Criar inventario/magias como colecoes com drag/drop, ordenacao, pastas e busca.
-- Criar efeitos/condicoes com regras derivadas mais avancadas que soma numerica simples.
+- [feito-base] Aplicar efeitos simples por convencao `bonus_*`, `set_*`, `min_*`, `max_*`, `multiply_*` e `armor_class`.
+- [feito-base] Criar compendios locais por sistema para itens prontos.
+- Evoluir compendios para pastas, busca, imagens e importacao de pacotes completos.
+- Criar inventario/magias como colecoes com ordenacao, pastas e busca.
+- Criar efeitos/condicoes com duracao, escopo, acumulacao e regras derivadas mais completas.
 - Criar editor visual de layout da ficha alem de secoes/abas.
 
 ## P4.5 - Mapa, visao e paredes
@@ -154,4 +158,6 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - Itens reais do mundo persistidos no `world.json`.
 - Painel de itens no desktop com anexar/equipar/apagar.
 - Ficha desktop mostrando itens anexados e rolagens de item.
-- Efeitos simples de itens ativos alterando atributos/CA/bonus.
+- Ficha desktop criando itens anexados direto pela aba aberta.
+- Efeitos declarativos de itens ativos alterando atributos/CA/bonus/minimos/maximos/multiplicadores.
+- Drag/drop de atores e itens para criar tokens vinculados na cena.

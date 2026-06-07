@@ -100,6 +100,81 @@
   line-height: 1.45;
 }
 
+.compendiumBox {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(230,145,56,0.055);
+}
+
+.compendiumHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.compendiumHeader span {
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.compendiumHeader small {
+  border-radius: 999px;
+  background: rgba(230,145,56,0.18);
+  color: #f6d59e;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 7px;
+}
+
+.compendiumList {
+  display: grid;
+  gap: 6px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.compendiumList button {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 5px;
+  background: rgba(0,0,0,0.28);
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  padding: 7px 8px;
+  text-align: left;
+}
+
+.compendiumList button:hover {
+  border-color: rgba(230,145,56,0.48);
+  background: rgba(230,145,56,0.1);
+}
+
+.compendiumList strong,
+.compendiumList span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compendiumList strong {
+  color: var(--text-primary);
+  font-size: 11px;
+}
+
+.compendiumList span {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
 .itemList {
   flex: 1;
   display: grid;
@@ -140,6 +215,14 @@
 .itemCard:focus-within {
   border-color: rgba(230,145,56,0.52);
   background: rgba(230,145,56,0.08);
+}
+
+.itemCardDraggable {
+  cursor: grab;
+}
+
+.itemCardDraggable:active {
+  cursor: grabbing;
 }
 
 .itemMain {
@@ -219,7 +302,7 @@
 
 .itemActions {
   display: grid;
-  grid-template-columns: 1fr 72px;
+  grid-template-columns: 1fr 58px 72px;
   gap: 6px;
   padding: 8px;
   border-top: 1px solid rgba(255,255,255,0.08);

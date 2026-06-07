@@ -105,7 +105,13 @@ export default function ActorsPanel({
           return (
             <article
               key={actor.id}
-              className={styles.actorCard}
+              className={`${styles.actorCard} ${styles.actorCardDraggable}`}
+              draggable
+              onDragStart={event => {
+                event.dataTransfer.effectAllowed = 'copy'
+                event.dataTransfer.setData('application/x-vtt-actor-id', actor.id)
+                event.dataTransfer.setData('text/plain', actor.name)
+              }}
             >
               <button
                 className={styles.actorMain}

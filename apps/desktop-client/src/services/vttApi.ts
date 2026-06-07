@@ -42,6 +42,15 @@ export interface ApiSystemItemType {
   fields: ApiSystemField[]
 }
 
+export interface ApiCompendiumItem {
+  id: string
+  type: string
+  name: string
+  data?: Record<string, string | number | boolean>
+  equipped?: boolean
+  quantity?: number
+}
+
 export interface ApiGameSystem {
   id: string
   name: string
@@ -52,6 +61,7 @@ export interface ApiGameSystem {
   manifest_path?: string
   actor_types: ApiSystemActorType[]
   item_types?: ApiSystemItemType[]
+  compendium_items?: ApiCompendiumItem[]
   primary_token_attribute?: string
   grid?: {
     distance: number
@@ -66,6 +76,7 @@ export interface CreateSystemPayload {
   description?: string
   actor_types?: ApiSystemActorType[]
   item_types?: ApiSystemItemType[]
+  compendium_items?: ApiCompendiumItem[]
   primary_token_attribute?: string
   grid?: {
     distance: number
@@ -145,6 +156,8 @@ export interface ApiActorCompanionPermission {
 export interface ApiToken {
   id: string
   scene_id: string
+  actor_id?: string
+  item_id?: string
   asset_id?: string
   name: string
   x: number
@@ -282,6 +295,8 @@ export interface UploadAssetPayload {
 }
 
 export interface CreateTokenPayload {
+  actor_id?: string
+  item_id?: string
   asset_id?: string
   name: string
   x: number

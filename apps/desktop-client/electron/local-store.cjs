@@ -221,6 +221,7 @@ function defaultItemTypes() {
       fields: [
         { id: 'armor_class', label: 'CA base', type: 'number', section: 'Uso', default_value: 10 },
         { id: 'bonus_ac', label: 'Bonus de CA', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'set_ac', label: 'Definir CA', type: 'number', section: 'Efeitos', default_value: 0 },
         { id: 'properties', label: 'Propriedades', type: 'text', section: 'Uso', default_value: '' },
         { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
       ],
@@ -246,6 +247,7 @@ function defaultItemTypes() {
         { id: 'bonus_ac', label: 'Bonus de CA', type: 'number', section: 'Efeitos', default_value: 0 },
         { id: 'bonus_str', label: 'Bonus de Forca', type: 'number', section: 'Efeitos', default_value: 0 },
         { id: 'bonus_dex', label: 'Bonus de Destreza', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'bonus_speed', label: 'Bonus de deslocamento', type: 'number', section: 'Efeitos', default_value: 0 },
         { id: 'description', label: 'Descricao', type: 'textarea', section: 'Notas', default_value: '' },
       ],
     },
@@ -262,6 +264,9 @@ function defaultItemTypes() {
         { id: 'bonus_int', label: 'Bonus de Inteligencia', type: 'number', section: 'Efeitos', default_value: 0 },
         { id: 'bonus_wis', label: 'Bonus de Sabedoria', type: 'number', section: 'Efeitos', default_value: 0 },
         { id: 'bonus_cha', label: 'Bonus de Carisma', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'set_speed', label: 'Definir deslocamento', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'max_speed', label: 'Limite max. deslocamento', type: 'number', section: 'Efeitos', default_value: 0 },
+        { id: 'multiply_speed', label: 'Multiplicar deslocamento', type: 'number', section: 'Efeitos', default_value: 1 },
       ],
     },
   ]
@@ -388,8 +393,28 @@ function normalizeSystemItemTypes(itemTypes) {
   return itemTypes.map(normalizeSystemItemType).filter(itemType => itemType.id)
 }
 
+function normalizeCompendiumItems(items, itemTypes) {
+  if (!Array.isArray(items) || itemTypes.length === 0) return []
+
+  return items
+    .map((item, index) => {
+      const itemType = itemTypes.find(type => type.id === item?.type) ?? itemTypes[0]
+      const name = String(item?.name || `Item ${index + 1}`).trim() || `Item ${index + 1}`
+      return {
+        id: fieldId(item?.id || name, `compendium_item_${index + 1}`),
+        type: itemType.id,
+        name,
+        data: buildItemData(itemType, item?.data || {}),
+        equipped: Boolean(item?.equipped),
+        quantity: asNumber(item?.quantity ?? item?.data?.quantity, 1),
+      }
+    })
+    .filter(item => item.id && item.name)
+}
+
 function normalizeSystem(system) {
   const timestamp = now()
+  const itemTypes = normalizeSystemItemTypes(system?.item_types || system?.itemTypes)
   const normalized = {
     id: String(system?.id || newId('system')),
     name: String(system?.name || '').trim(),
@@ -397,7 +422,8 @@ function normalizeSystem(system) {
     version: String(system?.version || '0.1'),
     description: String(system?.description || ''),
     actor_types: normalizeActorTypes(system?.actor_types || system?.actorTypes),
-    item_types: normalizeSystemItemTypes(system?.item_types || system?.itemTypes),
+    item_types: itemTypes,
+    compendium_items: normalizeCompendiumItems(system?.compendium_items || system?.compendiumItems, itemTypes),
     primary_token_attribute: String(system?.primary_token_attribute || 'hp'),
     grid: {
       distance: asNumber(system?.grid?.distance, 5),
@@ -412,6 +438,7 @@ function normalizeSystem(system) {
   if (isDndLikeSystem(normalized)) {
     normalized.actor_types = normalized.actor_types.map((actorType, index) => mergeDndLiteFields(actorType, index))
     normalized.item_types = mergeDndLiteItemTypes(normalized.item_types)
+    normalized.compendium_items = normalizeCompendiumItems(normalized.compendium_items, normalized.item_types)
   }
 
   validateSystemManifest(normalized)
@@ -446,6 +473,11 @@ function validateSystemManifest(system) {
   const duplicatedItemTypes = duplicateValues((system.item_types || []).map(itemType => itemType.id))
   for (const itemTypeId of duplicatedItemTypes) {
     errors.push(`Tipo de item duplicado: "${itemTypeId}".`)
+  }
+
+  const duplicatedCompendiumItems = duplicateValues((system.compendium_items || []).map(item => item.id))
+  for (const itemId of duplicatedCompendiumItems) {
+    errors.push(`Item duplicado no compendio: "${itemId}".`)
   }
 
   for (const actorType of system.actor_types || []) {
@@ -508,6 +540,20 @@ function validateSystemManifest(system) {
       if (!SYSTEM_FIELD_TYPES.has(field.type)) {
         errors.push(`Campo "${field.label || field.id}" de item "${itemType.label}" usa tipo invalido: "${field.type}".`)
       }
+    }
+  }
+
+  for (const item of system.compendium_items || []) {
+    if (!item.id || !SYSTEM_ID_PATTERN.test(item.id)) {
+      errors.push(`ID invalido no item de compendio "${item.name || item.id}".`)
+    }
+
+    if (!item.name) {
+      errors.push(`Item de compendio "${item.id}" precisa ter nome.`)
+    }
+
+    if (!(system.item_types || []).some(itemType => itemType.id === item.type)) {
+      errors.push(`Item de compendio "${item.name || item.id}" usa tipo inexistente: "${item.type}".`)
     }
   }
 
@@ -841,6 +887,7 @@ function createLocalStore(savesDir) {
       description: String(payload?.description || ''),
       actor_types: payload?.actor_types || payload?.actorTypes,
       item_types: payload?.item_types || payload?.itemTypes,
+      compendium_items: payload?.compendium_items || payload?.compendiumItems,
       primary_token_attribute: payload?.primary_token_attribute || payload?.primaryTokenAttribute,
       grid: payload?.grid,
       created_at: timestamp,
@@ -865,6 +912,7 @@ function createLocalStore(savesDir) {
       name: Object.prototype.hasOwnProperty.call(patch || {}, 'name') ? String(patch.name || '').trim() : current.name,
       actor_types: patch?.actor_types || patch?.actorTypes || current.actor_types,
       item_types: patch?.item_types || patch?.itemTypes || current.item_types,
+      compendium_items: patch?.compendium_items || patch?.compendiumItems || current.compendium_items,
       primary_token_attribute: patch?.primary_token_attribute || patch?.primaryTokenAttribute || current.primary_token_attribute,
       grid: patch?.grid || current.grid,
       updated_at: now(),
@@ -1272,18 +1320,28 @@ function createLocalStore(savesDir) {
     const sceneSize = sceneDimensionToPixels(scene.width, scene.height, sceneGridSize)
     const centerX = Math.floor(sceneSize.width / sceneGridSize / 2)
     const centerY = Math.floor(sceneSize.height / sceneGridSize / 2)
-    const maxHp = Number(payload?.max_hp ?? payload?.maxHp ?? 10)
-    const hp = Number(payload?.hp ?? maxHp)
+    const actorId = String(payload?.actor_id || payload?.actorId || '').trim()
+    const itemId = String(payload?.item_id || payload?.itemId || '').trim()
+    const actor = actorId ? data.actors.find(actor => actor.id === actorId) : null
+    const item = itemId ? (data.items || []).find(item => item.id === itemId) : null
+    if (actorId && !actor) throw new Error('Ficha vinculada ao token nao encontrada neste mundo.')
+    if (itemId && !item) throw new Error('Item vinculado ao token nao encontrado neste mundo.')
+
+    const actorData = actor?.data || {}
+    const maxHp = Number(payload?.max_hp ?? payload?.maxHp ?? actorData.max_hp ?? actor?.max_hp ?? 10)
+    const hp = Number(payload?.hp ?? actorData.hp ?? actor?.hp ?? maxHp)
     const token = {
       id: newId('token'),
       scene_id: sceneId,
-      asset_id: payload?.asset_id || payload?.assetId || '',
-      name: String(payload?.name || 'Novo token').trim() || 'Novo token',
+      actor_id: actorId,
+      item_id: itemId,
+      asset_id: payload?.asset_id || payload?.assetId || actor?.portrait_asset_id || '',
+      name: String(payload?.name || actor?.name || item?.name || 'Novo token').trim() || 'Novo token',
       x: Number.isFinite(Number(payload?.x)) ? Number(payload.x) : centerX,
       y: Number.isFinite(Number(payload?.y)) ? Number(payload.y) : centerY,
       hp: hp > 0 ? hp : maxHp,
       max_hp: maxHp > 0 ? maxHp : 10,
-      ac: Number(payload?.ac || 10),
+      ac: Number(payload?.ac ?? actorData.ac ?? actor?.ac ?? 10),
       hidden: Boolean(payload?.hidden),
       created_at: timestamp,
       updated_at: timestamp,
@@ -1406,6 +1464,9 @@ function createLocalStore(savesDir) {
     data.items = (data.items || []).map(item => (
       item.actor_id === actorId ? { ...item, actor_id: '', updated_at: now() } : item
     ))
+    data.tokens = (data.tokens || []).map(token => (
+      token.actor_id === actorId ? { ...token, actor_id: '', updated_at: now() } : token
+    ))
     await writeWorld(data)
     return { deleted_id: actorId }
   }
@@ -1496,6 +1557,9 @@ function createLocalStore(savesDir) {
   async function deleteItem(itemId) {
     const data = await findWorldByEntity(world => (world.items || []).some(item => item.id === itemId))
     data.items = data.items.filter(item => item.id !== itemId)
+    data.tokens = (data.tokens || []).map(token => (
+      token.item_id === itemId ? { ...token, item_id: '', updated_at: now() } : token
+    ))
     await writeWorld(data)
     return { deleted_id: itemId }
   }
