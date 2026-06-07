@@ -168,6 +168,30 @@ export interface ApiToken {
   hidden: boolean
 }
 
+export interface ApiCombatant {
+  id: string
+  token_id: string
+  scene_id: string
+  actor_id?: string
+  name: string
+  initiative: number | null
+  defeated: boolean
+  hidden: boolean
+  sort: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ApiCombat {
+  id: string
+  world_id: string
+  scene_id?: string
+  active: boolean
+  round: number
+  turn: number
+  combatants: ApiCombatant[]
+}
+
 export interface ActorAttributes {
   str: number
   dex: number
@@ -249,6 +273,7 @@ export interface ApiWorldSnapshot {
   actors: ApiActor[]
   items: ApiItem[]
   messages: ApiChatMessage[]
+  combat?: ApiCombat
   tokens_by_scene: Record<string, ApiToken[]>
 }
 
@@ -657,6 +682,38 @@ export async function deleteToken(tokenId: string) {
     throw new Error(`Erro ao apagar token: ${response.status}`)
   }
   return { deleted_id: tokenId }
+}
+
+export async function addCombatant(sceneId: string, tokenId: string) {
+  if (localStorageApi) {
+    return localStorageApi.addCombatant(sceneId, tokenId)
+  }
+
+  throw new Error('Combate local exige o modo programa.')
+}
+
+export async function removeCombatant(combatantId: string) {
+  if (localStorageApi) {
+    return localStorageApi.removeCombatant(combatantId)
+  }
+
+  throw new Error('Combate local exige o modo programa.')
+}
+
+export async function patchCombat(worldId: string, payload: Partial<ApiCombat>) {
+  if (localStorageApi) {
+    return localStorageApi.patchCombat(worldId, payload)
+  }
+
+  throw new Error('Combate local exige o modo programa.')
+}
+
+export async function patchCombatant(combatantId: string, payload: Partial<ApiCombatant>) {
+  if (localStorageApi) {
+    return localStorageApi.patchCombatant(combatantId, payload)
+  }
+
+  throw new Error('Combate local exige o modo programa.')
 }
 
 export async function createActor(worldId: string, payload: CreateActorPayload) {

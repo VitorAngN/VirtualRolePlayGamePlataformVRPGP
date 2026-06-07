@@ -22,6 +22,7 @@ Relacionamentos:
 - possui muitos assets;
 - possui jogadores.
 - pode estar vinculado a um sistema local.
+- possui um estado de combate persistido no save do mundo.
 
 ## GameSystem
 
@@ -310,6 +311,55 @@ Regras iniciais:
 - `hidden` prepara o futuro controle de visibilidade do mestre.
 - quando uma ficha ou item e apagado, os tokens deixam de apontar para o documento removido.
 
+## Combat
+
+Representa o controle de encontro/turnos do mundo.
+
+Campos principais:
+
+- `id`
+- `world_id`
+- `scene_id`
+- `active`
+- `round`
+- `turn`
+- `combatants`
+
+Regras iniciais:
+
+- fica persistido em `world.json`;
+- `active` indica se o encontro esta iniciado;
+- `round` e `turn` controlam a ordem atual;
+- `scene_id` aponta para a cena onde o encontro esta acontecendo;
+- pausar a mesa com Space e uma trava de sessao/interface por enquanto, nao o mesmo estado do combate.
+
+## Combatant
+
+Representa um token real participando do combate.
+
+Campos principais:
+
+- `id`
+- `token_id`
+- `scene_id`
+- `actor_id`
+- `name`
+- `initiative`
+- `defeated`
+- `hidden`
+- `sort`
+- `created_at`
+- `updated_at`
+
+Regras iniciais:
+
+- o combatente sempre nasce a partir de um token existente na cena;
+- `actor_id` e opcional e acompanha o token quando ele estiver vinculado a uma ficha;
+- itens continuam sendo documentos do mundo e nao precisam estar anexados a jogador/personagem;
+- apagar token ou cena remove os combatentes relacionados;
+- atualizar nome/ator/oculto do token sincroniza o combatente;
+- a ordenacao usa iniciativa quando existir e `sort` como desempate.
+
 ## Player
 
 Representa um usuario conectado ao mundo.
@@ -373,6 +423,7 @@ Na 0.1, o chat ja e persistido no `world.json`. Mensagens criadas pelo desktop e
 - assets;
 - atores;
 - itens;
+- estado de combate;
 - mensagens de chat;
 - tokens agrupados por cena.
 

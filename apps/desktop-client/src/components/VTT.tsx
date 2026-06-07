@@ -10,9 +10,11 @@ import ActorCreateDialog from './ActorCreateDialog'
 import ActorSheetWindow from './ActorSheetWindow'
 import ItemsPanel from './ItemsPanel'
 import ItemEditDialog from './ItemEditDialog'
+import CombatPanel from './CombatPanel'
 import MacroBar, { type MacroAction } from './MacroBar'
 import type { Scene } from './scenes/types'
 import {
+  addCombatant,
   broadcastCompanionEvent,
   createActor,
   createCompanionSession,
@@ -31,14 +33,19 @@ import {
   onCompanionEvent,
   patchScene,
   patchActor,
+  patchCombat,
+  patchCombatant,
   patchItem,
   patchSystem,
   patchToken,
+  removeCombatant,
   resolveAssetUrl,
   uploadAsset,
   type ApiActor,
   type ApiAsset,
   type ApiChatMessage,
+  type ApiCombat,
+  type ApiCombatant,
   type ApiCompendiumItem,
   type ApiCompanionPermissions,
   type ApiCompanionSessionLink,
@@ -366,6 +373,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
   const [assets, setAssets] = useState<ApiAsset[]>([])
   const [actors, setActors] = useState<ApiActor[]>([])
   const [items, setItems] = useState<ApiItem[]>([])
+  const [combat, setCombat] = useState<ApiCombat | null>(null)
   const [system, setSystem] = useState<ApiGameSystem | null>(null)
   const [openActorSheetId, setOpenActorSheetId] = useState<string | null>(null)
   const [isActorCreateOpen, setIsActorCreateOpen] = useState(false)
@@ -386,6 +394,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
   const [activeTool, setActiveTool] = useState<ToolId>('token')
   const [measure, setMeasure] = useState<MeasureState | null>(null)
   const [isMeasuring, setIsMeasuring] = useState(false)
+  const [isGamePaused, setIsGamePaused] = useState(false)
   const mapRef = useRef<HTMLDivElement>(null)
   const panRef = useRef<{ startX: number; startY: number; view: ViewTransform } | null>(null)
   const tokensRef = useRef<Token[]>(INITIAL_TOKENS)
@@ -463,6 +472,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
         setAssets(snapshot.assets)
         setActors(snapshot.actors ?? [])
         setItems(snapshot.items ?? [])
+        setCombat(snapshot.combat ?? null)
         setSystem(snapshot.system ?? null)
         setMessages(snapshot.messages ?? [])
         setActiveScene(nextScene)
@@ -506,6 +516,24 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
       setMessages(prev => prev.filter(message => message.id !== event.message_id))
     }
   }), [worldId])
+
+  useEffect(() => {
+    function handlePauseShortcut(event: KeyboardEvent) {
+      if (event.code !== 'Space') return
+      const target = event.target
+      const isEditingText = target instanceof HTMLElement
+        && Boolean(target.closest('input, textarea, select, [contenteditable="true"]'))
+      if (isEditingText) return
+
+      event.preventDefault()
+      setIsGamePaused(prev => !prev)
+      setDraggingTokenId(null)
+      setIsMeasuring(false)
+    }
+
+    window.addEventListener('keydown', handlePauseShortcut)
+    return () => window.removeEventListener('keydown', handlePauseShortcut)
+  }, [])
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -639,6 +667,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
   }
 
   function startMeasure(event: PointerEvent<HTMLDivElement>) {
+    if (isGamePaused) return false
     if (event.button !== 0 || isMapUiTarget(event.target)) return false
     const point = measurePointFromEvent(event)
     if (!point) return false
@@ -759,7 +788,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
   }
 
   function moveDraggedToken(event: PointerEvent<HTMLElement>) {
-    if (!draggingTokenId) return
+    if (isGamePaused || !draggingTokenId) return
     const nextPoint = pointToGrid(event)
     if (!nextPoint) return
 
@@ -823,7 +852,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
   }
 
   function handleCanvasDragOver(event: DragEvent<HTMLDivElement>) {
-    if (!activeScene) return
+    if (!activeScene || isGamePaused) return
     if (
       event.dataTransfer.types.includes('application/x-vtt-actor-id')
       || event.dataTransfer.types.includes('application/x-vtt-item-id')
@@ -834,7 +863,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
   }
 
   function handleCanvasDrop(event: DragEvent<HTMLDivElement>) {
-    if (!activeScene || isMapUiTarget(event.target)) return
+    if (!activeScene || isGamePaused || isMapUiTarget(event.target)) return
 
     const point = clientToGrid(event.clientX, event.clientY)
     if (!point) return
@@ -932,6 +961,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
         setActors(snapshot.actors ?? [])
         setItems(snapshot.items ?? [])
         setMessages(snapshot.messages ?? [])
+        setCombat(snapshot.combat ?? null)
         setActiveScene(nextScene)
         tokensRef.current = nextTokens
         setTokens(nextTokens)
@@ -1187,6 +1217,49 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
     return item
   }
 
+  function handleAddCombatant(tokenId: string) {
+    const scene = requireActiveScene('Ative uma cena antes de montar o combate.')
+    if (!scene) return
+
+    addCombatant(scene.id, tokenId)
+      .then(setCombat)
+      .catch(() => pushActivity('Falha no combate', 'Nao consegui adicionar o token ao encontro.'))
+  }
+
+  function handleAddAllSceneCombatants() {
+    const scene = requireActiveScene('Ative uma cena antes de montar o combate.')
+    if (!scene) return
+
+    const sceneTokens = tokensRef.current.filter(token => token.sceneId === scene.id)
+    let chain = Promise.resolve(combat)
+    for (const token of sceneTokens) {
+      chain = chain.then(() => addCombatant(scene.id, token.id))
+    }
+    chain
+      .then(nextCombat => {
+        if (nextCombat) setCombat(nextCombat)
+      })
+      .catch(() => pushActivity('Falha no combate', 'Nao consegui adicionar todos os tokens ao encontro.'))
+  }
+
+  function handlePatchCombat(payload: Partial<ApiCombat>) {
+    patchCombat(worldId, payload)
+      .then(setCombat)
+      .catch(() => pushActivity('Falha no combate', 'Nao consegui salvar o encontro.'))
+  }
+
+  function handlePatchCombatant(combatantId: string, payload: Partial<ApiCombatant>) {
+    patchCombatant(combatantId, payload)
+      .then(setCombat)
+      .catch(() => pushActivity('Falha no combate', 'Nao consegui salvar o combatente.'))
+  }
+
+  function handleRemoveCombatant(combatantId: string) {
+    removeCombatant(combatantId)
+      .then(setCombat)
+      .catch(() => pushActivity('Falha no combate', 'Nao consegui remover o combatente.'))
+  }
+
   async function handleDeleteItem(item: ApiItem) {
     setItems(prev => prev.filter(existing => existing.id !== item.id))
     if (editingItem?.id === item.id) setEditingItem(null)
@@ -1329,7 +1402,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
   }
 
   return (
-    <div className={styles.root} id="vtt-root">
+    <div className={`${styles.root} ${isGamePaused ? styles.rootPaused : ''}`} id="vtt-root">
       <div
         ref={mapRef}
         className={`${styles.mapCanvas} ${isPanning ? styles.mapCanvasPanning : ''}`}
@@ -1399,12 +1472,13 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
                   onPointerDown={event => {
                     if (activeTool !== 'token') return
                     event.stopPropagation()
-                    event.currentTarget.setPointerCapture(event.pointerId)
                     setSelectedTokenId(token.id)
+                    if (isGamePaused) return
+                    event.currentTarget.setPointerCapture(event.pointerId)
                     setDraggingTokenId(token.id)
                   }}
                   onPointerMove={event => {
-                    if (activeTool !== 'token') return
+                    if (activeTool !== 'token' || isGamePaused) return
                     event.stopPropagation()
                     moveDraggedToken(event)
                   }}
@@ -1456,6 +1530,14 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
           )}
         </div>
 
+        {isGamePaused && (
+          <div className={styles.pauseOverlay} data-map-ui="true" aria-live="polite">
+            <div className={styles.pauseMark}><span>20</span></div>
+            <strong>JOGO PAUSADO</strong>
+            <span>Controles de tokens travados pelo mestre</span>
+          </div>
+        )}
+
         <div className={styles.sceneNav} data-map-ui="true">
           <button
             className={styles.sceneNavActive}
@@ -1505,7 +1587,7 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
             icon={tab.icon}
             isOpen={activePanel === tab.id}
             onClick={() => {
-              if (tab.id === 'actors' || tab.id === 'items') {
+              if (tab.id === 'actors' || tab.id === 'items' || tab.id === 'combat') {
                 togglePanel(tab.id)
                 return
               }
@@ -1603,6 +1685,24 @@ export default function VTT({ worldId, onExit }: { worldId: string; onExit: () =
             })
           }}
           onDeleteItem={requestDeleteItem}
+        />
+      )}
+
+      {(activePanel === 'combat' || exitingPanel === 'combat') && (
+        <CombatPanel
+          isOpen={activePanel === 'combat'}
+          isExiting={exitingPanel === 'combat'}
+          combat={combat}
+          activeScene={activeScene}
+          tokens={visibleTokens}
+          actors={actors}
+          selectedTokenId={selectedTokenId}
+          onAddToken={handleAddCombatant}
+          onAddAllSceneTokens={handleAddAllSceneCombatants}
+          onRemoveCombatant={handleRemoveCombatant}
+          onPatchCombat={handlePatchCombat}
+          onPatchCombatant={handlePatchCombatant}
+          onOpenActor={setOpenActorSheetId}
         />
       )}
 

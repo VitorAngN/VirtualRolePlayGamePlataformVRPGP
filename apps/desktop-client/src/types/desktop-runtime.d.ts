@@ -38,6 +38,10 @@ interface Window {
       createToken: (sceneId: string, payload: import('../services/vttApi').CreateTokenPayload) => Promise<import('../services/vttApi').ApiToken>
       patchToken: (tokenId: string, patch: Partial<import('../services/vttApi').ApiToken>) => Promise<import('../services/vttApi').ApiToken>
       deleteToken: (tokenId: string) => Promise<{ deleted_id: string }>
+      addCombatant: (sceneId: string, tokenId: string) => Promise<import('../services/vttApi').ApiCombat>
+      removeCombatant: (combatantId: string) => Promise<import('../services/vttApi').ApiCombat>
+      patchCombat: (worldId: string, patch: Partial<import('../services/vttApi').ApiCombat>) => Promise<import('../services/vttApi').ApiCombat>
+      patchCombatant: (combatantId: string, patch: Partial<import('../services/vttApi').ApiCombatant>) => Promise<import('../services/vttApi').ApiCombat>
       createActor: (worldId: string, payload: import('../services/vttApi').CreateActorPayload) => Promise<import('../services/vttApi').ApiActor>
       patchActor: (actorId: string, patch: Partial<import('../services/vttApi').ApiActor>) => Promise<import('../services/vttApi').ApiActor>
       deleteActor: (actorId: string) => Promise<{ deleted_id: string }>

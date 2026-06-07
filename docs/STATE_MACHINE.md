@@ -1,5 +1,7 @@
 # A Máquina de Estados (FSM) no Servidor Golang
 
+> Estado atual local: o desktop ja possui `combat` persistido no `world.json` e pausa local com Space. A FSM abaixo continua sendo a direcao para validar turnos e comandos em multiplayer/mobile quando o servidor autoritativo entrar de verdade.
+
 ## Por que usar uma Máquina de Estados?
 VTTs clássicos frequentemente confiam na "Honra" dos jogadores ou dependem que o Mestre corrija ações equivocadas manualmente. Com o VTT Lite, queremos um motor robusto que aplique regras (SRD 5e) nativamente.
 
@@ -13,17 +15,22 @@ A sala de jogo sempre estará em um dos seguintes estados principais:
    - Estado livre. Jogadores podem mover seus tokens livremente, sem restrição de grid por turno.
    - Ideal para exploração de dungeons fora de combate ou roleplay social.
 
-2. **`COMBAT_INITIATIVE_ROLL`**:
+2. **`SESSION_PAUSED`**:
+   - O Mestre pausa a mesa.
+   - Clientes continuam podendo visualizar a cena, mas comandos de movimento/acao ficam bloqueados.
+   - Na versao desktop local, isso ja existe como estado de interface acionado pela tecla Space.
+
+3. **`COMBAT_INITIATIVE_ROLL`**:
    - O Mestre ativa o combate.
    - O servidor trava movimentações livres.
    - O servidor aguarda o payload de "Rolagem de Iniciativa" de todos os clientes conectados (via Desktop ou Companion Mobile).
 
-3. **`COMBAT_TURN_ACTIVE`**:
+4. **`COMBAT_TURN_ACTIVE`**:
    - O servidor ordena os turnos com base na iniciativa.
    - Apenas o Token correspondente ao `CurrentTurnId` tem permissão de enviar o comando `MOVE_TOKEN` ou `ACTION_ATTACK`.
    - Se um jogador tentar mover um token fora do seu turno, o Go Server rejeita a ação e o React no cliente faz o token "voltar" para a posição original (efeito elástico).
 
-4. **`COMBAT_TURN_RESOLUTION`**:
+5. **`COMBAT_TURN_RESOLUTION`**:
    - Ocorre no exato momento em que um ataque é declarado. 
    - O servidor aguarda a rolagem de dano ou reações, faz os cálculos, atualiza o Redis e volta para `COMBAT_TURN_ACTIVE`.
 

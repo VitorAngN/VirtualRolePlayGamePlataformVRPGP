@@ -25,6 +25,10 @@ function asNumber(value, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value))
+}
+
 function sceneDimensionToPixels(width, height, gridSize) {
   const rawWidth = asNumber(width, 1600)
   const rawHeight = asNumber(height, 1200)
@@ -586,6 +590,18 @@ function buildItemData(itemType, payloadData = {}) {
   return data
 }
 
+function defaultCombat(worldId) {
+  return {
+    id: `combat_${worldId}`,
+    world_id: worldId,
+    scene_id: '',
+    active: false,
+    round: 0,
+    turn: 0,
+    combatants: [],
+  }
+}
+
 function actorDataFromPayload(payload = {}, base = {}) {
   const data = { ...base, ...(payload.data || {}) }
   const mappings = [
@@ -805,6 +821,7 @@ function createLocalStore(savesDir) {
     data.messages ??= []
     data.actors ??= []
     data.items ??= []
+    data.combat ??= defaultCombat(data.world?.id || worldId)
     const index = await readIndex()
     const linkedSystem = index.systems.find(system => system.id === data.world?.system_id)
     if (linkedSystem) {
@@ -818,6 +835,7 @@ function createLocalStore(savesDir) {
         actor_types: [{ id: 'personagem', label: 'Personagem' }],
       })
     }
+    ensureCombat(data)
     return data
   }
 
@@ -842,6 +860,7 @@ function createLocalStore(savesDir) {
 
   function toSnapshot(data) {
     const worldSystem = data.system || null
+    const combat = ensureCombat(data)
     const tokensByScene = {}
     for (const scene of data.scenes) {
       tokensByScene[scene.id] = []
@@ -862,8 +881,53 @@ function createLocalStore(savesDir) {
       })),
       items: data.items,
       messages: data.messages,
+      combat,
       tokens_by_scene: tokensByScene,
     }
+  }
+
+  function ensureCombat(data) {
+    const worldId = data.world?.id || ''
+    const existingCombat = data.combat && typeof data.combat === 'object'
+      ? data.combat
+      : defaultCombat(worldId)
+    const tokenIds = new Set((data.tokens || []).map(token => token.id))
+    const sceneIds = new Set((data.scenes || []).map(scene => scene.id))
+    const timestamp = now()
+
+    const combatants = Array.isArray(existingCombat.combatants)
+      ? existingCombat.combatants
+        .filter(combatant => tokenIds.has(combatant?.token_id) && sceneIds.has(combatant?.scene_id))
+        .map((combatant, index) => {
+          const token = (data.tokens || []).find(item => item.id === combatant.token_id)
+          return {
+            id: String(combatant.id || newId('combatant')),
+            token_id: String(combatant.token_id),
+            scene_id: String(combatant.scene_id),
+            actor_id: String(token?.actor_id || combatant.actor_id || ''),
+            name: String(token?.name || combatant.name || 'Combatente'),
+            initiative: Number.isFinite(Number(combatant.initiative)) ? Number(combatant.initiative) : null,
+            defeated: Boolean(combatant.defeated),
+            hidden: Boolean(combatant.hidden),
+            sort: Number.isFinite(Number(combatant.sort)) ? Number(combatant.sort) : index,
+            created_at: String(combatant.created_at || timestamp),
+            updated_at: String(combatant.updated_at || timestamp),
+          }
+        })
+      : []
+
+    const activeSceneId = sceneIds.has(existingCombat.scene_id) ? String(existingCombat.scene_id) : ''
+    const turnMax = Math.max(0, combatants.length - 1)
+    data.combat = {
+      id: String(existingCombat.id || `combat_${worldId}`),
+      world_id: worldId,
+      scene_id: activeSceneId,
+      active: Boolean(existingCombat.active),
+      round: Math.max(0, asNumber(existingCombat.round, 0)),
+      turn: clamp(Math.trunc(asNumber(existingCombat.turn, 0)), 0, turnMax),
+      combatants,
+    }
+    return data.combat
   }
 
   async function listWorlds() {
@@ -998,6 +1062,7 @@ function createLocalStore(savesDir) {
       actors: [],
       items: [],
       messages: [],
+      combat: defaultCombat(world.id),
     }
 
     await fs.mkdir(path.join(worldDir(world.id), 'assets'), { recursive: true })
@@ -1198,6 +1263,11 @@ function createLocalStore(savesDir) {
 
     data.scenes = data.scenes.filter(scene => scene.id !== sceneId)
     data.tokens = data.tokens.filter(token => token.scene_id !== sceneId)
+    data.combat = {
+      ...ensureCombat(data),
+      scene_id: data.combat?.scene_id === sceneId ? '' : data.combat?.scene_id || '',
+      combatants: (data.combat?.combatants || []).filter(combatant => combatant.scene_id !== sceneId),
+    }
     data.assets = data.assets.map(asset => (
       asset.scene_id === sceneId ? { ...asset, scene_id: '' } : asset
     ))
@@ -1304,6 +1374,20 @@ function createLocalStore(savesDir) {
         ? { ...token, ...patch, updated_at: timestamp }
         : token
     ))
+    if (data.combat?.combatants?.length) {
+      const token = data.tokens.find(item => item.id === tokenId)
+      data.combat.combatants = data.combat.combatants.map(combatant => (
+        combatant.token_id === tokenId
+          ? {
+              ...combatant,
+              actor_id: token?.actor_id || '',
+              name: token?.name || combatant.name,
+              hidden: Object.prototype.hasOwnProperty.call(patch || {}, 'hidden') ? Boolean(patch.hidden) : combatant.hidden,
+              updated_at: timestamp,
+            }
+          : combatant
+      ))
+    }
     await writeWorld(data)
     return data.tokens.find(token => token.id === tokenId)
   }
@@ -1355,8 +1439,99 @@ function createLocalStore(savesDir) {
   async function deleteToken(tokenId) {
     const data = await findWorldByEntity(world => world.tokens.some(token => token.id === tokenId))
     data.tokens = data.tokens.filter(token => token.id !== tokenId)
+    data.combat = {
+      ...ensureCombat(data),
+      combatants: (data.combat?.combatants || []).filter(combatant => combatant.token_id !== tokenId),
+    }
     await writeWorld(data)
     return { deleted_id: tokenId }
+  }
+
+  async function addCombatant(sceneId, tokenId) {
+    if (!sceneId || !tokenId) throw new Error('Cena e token sao obrigatorios para adicionar ao combate.')
+    const data = await findWorldByEntity(world => (
+      world.scenes.some(scene => scene.id === sceneId)
+      && world.tokens.some(token => token.id === tokenId)
+    ))
+    const scene = data.scenes.find(item => item.id === sceneId)
+    const token = data.tokens.find(item => item.id === tokenId)
+    if (!scene || !token || token.scene_id !== sceneId) throw new Error('Token nao pertence a cena informada.')
+
+    const combat = ensureCombat(data)
+    const timestamp = now()
+    if (!combat.combatants.some(combatant => combatant.token_id === tokenId)) {
+      combat.combatants.push({
+        id: newId('combatant'),
+        token_id: token.id,
+        scene_id: scene.id,
+        actor_id: token.actor_id || '',
+        name: token.name,
+        initiative: null,
+        defeated: false,
+        hidden: Boolean(token.hidden),
+        sort: combat.combatants.length,
+        created_at: timestamp,
+        updated_at: timestamp,
+      })
+    }
+
+    combat.scene_id = combat.scene_id || scene.id
+    data.combat = combat
+    await writeWorld(data)
+    return ensureCombat(data)
+  }
+
+  async function removeCombatant(combatantId) {
+    const data = await findWorldByEntity(world => ensureCombat(world).combatants.some(combatant => combatant.id === combatantId))
+    data.combat.combatants = data.combat.combatants.filter(combatant => combatant.id !== combatantId)
+    data.combat.turn = clamp(Math.trunc(asNumber(data.combat.turn, 0)), 0, Math.max(0, data.combat.combatants.length - 1))
+    await writeWorld(data)
+    return ensureCombat(data)
+  }
+
+  async function patchCombat(worldId, patch) {
+    const data = await readWorld(worldId)
+    const combat = ensureCombat(data)
+    if (Object.prototype.hasOwnProperty.call(patch || {}, 'scene_id')) {
+      const sceneId = String(patch.scene_id || '')
+      if (sceneId && !data.scenes.some(scene => scene.id === sceneId)) throw new Error('Cena do combate nao encontrada.')
+      combat.scene_id = sceneId
+    }
+    if (Object.prototype.hasOwnProperty.call(patch || {}, 'active')) {
+      combat.active = Boolean(patch.active)
+      if (combat.active && combat.round <= 0) combat.round = 1
+    }
+    if (Object.prototype.hasOwnProperty.call(patch || {}, 'round')) {
+      combat.round = Math.max(0, Math.trunc(asNumber(patch.round, combat.round)))
+    }
+    if (Object.prototype.hasOwnProperty.call(patch || {}, 'turn')) {
+      combat.turn = clamp(Math.trunc(asNumber(patch.turn, combat.turn)), 0, Math.max(0, combat.combatants.length - 1))
+    }
+    data.combat = combat
+    await writeWorld(data)
+    return ensureCombat(data)
+  }
+
+  async function patchCombatant(combatantId, patch) {
+    const data = await findWorldByEntity(world => ensureCombat(world).combatants.some(combatant => combatant.id === combatantId))
+    const timestamp = now()
+    data.combat.combatants = data.combat.combatants.map(combatant => {
+      if (combatant.id !== combatantId) return combatant
+      const next = { ...combatant, updated_at: timestamp }
+      if (Object.prototype.hasOwnProperty.call(patch || {}, 'initiative')) {
+        next.initiative = patch.initiative === null || patch.initiative === ''
+          ? null
+          : Number.isFinite(Number(patch.initiative))
+            ? Number(patch.initiative)
+            : combatant.initiative
+      }
+      if (Object.prototype.hasOwnProperty.call(patch || {}, 'defeated')) next.defeated = Boolean(patch.defeated)
+      if (Object.prototype.hasOwnProperty.call(patch || {}, 'hidden')) next.hidden = Boolean(patch.hidden)
+      if (Object.prototype.hasOwnProperty.call(patch || {}, 'sort')) next.sort = asNumber(patch.sort, combatant.sort)
+      return next
+    })
+    await writeWorld(data)
+    return ensureCombat(data)
   }
 
   async function createActor(worldId, payload) {
@@ -1467,6 +1642,11 @@ function createLocalStore(savesDir) {
     data.tokens = (data.tokens || []).map(token => (
       token.actor_id === actorId ? { ...token, actor_id: '', updated_at: now() } : token
     ))
+    if (data.combat?.combatants?.length) {
+      data.combat.combatants = data.combat.combatants.map(combatant => (
+        combatant.actor_id === actorId ? { ...combatant, actor_id: '', updated_at: now() } : combatant
+      ))
+    }
     await writeWorld(data)
     return { deleted_id: actorId }
   }
@@ -1651,6 +1831,10 @@ function createLocalStore(savesDir) {
     createToken,
     patchToken,
     deleteToken,
+    addCombatant,
+    removeCombatant,
+    patchCombat,
+    patchCombatant,
     createActor,
     patchActor,
     saveActorCompanionPermission,

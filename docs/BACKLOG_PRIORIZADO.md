@@ -34,7 +34,8 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - [feito] Criar sistemas locais com manifesto basico de ficha.
 - [feito] Bloquear criacao de mundo sem sistema cadastrado.
 - [feito] Criar e editar atores usando campos definidos pelo sistema do mundo.
-- Criar controle simples de iniciativa.
+- [feito-base] Criar controle simples de iniciativa e turnos.
+- [feito-base] Pausar mesa com Space e travar controles de token no desktop.
 - [feito-base] Arrastar ator para a cena e criar token vinculado a ficha.
 - [feito-base] Vincular token a ator para PV/CA/nome virem da ficha no momento da criacao.
 - Controlar token de personagem na cena com permissao por jogador.
@@ -161,3 +162,5 @@ Este backlog organiza o que falta por prioridade realista para o VTT Lite.
 - Ficha desktop criando itens anexados direto pela aba aberta.
 - Efeitos declarativos de itens ativos alterando atributos/CA/bonus/minimos/maximos/multiplicadores.
 - Drag/drop de atores e itens para criar tokens vinculados na cena.
+- Painel de combate persistido no `world.json`, usando tokens reais da cena.
+- Atalho Space pausa a mesa e bloqueia movimentacao/criacao de tokens.

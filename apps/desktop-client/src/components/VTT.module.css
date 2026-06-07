@@ -651,3 +651,67 @@
     justify-self: center;
   }
 }
+
+.rootPaused .token {
+  cursor: not-allowed;
+}
+
+.pauseOverlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 130;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  text-align: center;
+  text-shadow: 0 3px 14px rgba(0,0,0,0.9);
+}
+
+.pauseOverlay::before {
+  content: "";
+  position: absolute;
+  inset: -28px -78px;
+  z-index: -1;
+  background: radial-gradient(circle, rgba(0,0,0,0.66), rgba(0,0,0,0.08) 68%, transparent);
+}
+
+.pauseMark {
+  width: 78px;
+  height: 78px;
+  display: grid;
+  place-items: center;
+  border: 3px solid rgba(0,0,0,0.75);
+  border-radius: 18px;
+  background: linear-gradient(145deg, #c42d2d, #7c1616);
+  color: rgba(255,241,218,0.96);
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow:
+    0 0 0 2px rgba(255,210,150,0.22),
+    0 16px 46px rgba(0,0,0,0.68);
+  transform: rotate(45deg);
+}
+
+.pauseMark span {
+  transform: rotate(-45deg);
+}
+
+.pauseOverlay strong {
+  color: #fff1da;
+  font-family: var(--font-serif);
+  font-size: clamp(28px, 5vw, 54px);
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.pauseOverlay > span {
+  color: rgba(255,255,255,0.76);
+  font-size: 12px;
+  font-weight: 800;
+}

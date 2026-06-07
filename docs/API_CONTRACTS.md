@@ -9,6 +9,26 @@ O caminho futuro de multiplayer/mobile pode usar uma arquitetura hibrida:
 
 Na versao atual, a base REST 0.1 existe como experimento. WebSocket ainda e proximo passo.
 
+## Desktop local atual
+
+O programa Electron salva e le o estado diretamente em `saves/`, sem depender da API Go para jogar localmente. O preload expõe uma camada de storage com as operacoes reais usadas pelo React.
+
+Operacoes locais ja existentes para combate:
+
+- `addCombatant(sceneId, tokenId)`
+- `removeCombatant(combatantId)`
+- `patchCombat(worldId, patch)`
+- `patchCombatant(combatantId, patch)`
+
+`WorldSnapshot` no desktop local inclui tambem:
+
+- `actors`
+- `items`
+- `chat_messages`
+- `combat`
+
+Esse contrato local deve guiar a futura API REST/WebSocket, em vez de criar um formato paralelo.
+
 ## Base local
 
 ```text
@@ -57,6 +77,10 @@ Snapshot:
   "world": {},
   "scenes": [],
   "assets": [],
+  "actors": [],
+  "items": [],
+  "chat_messages": [],
+  "combat": {},
   "tokens_by_scene": {}
 }
 ```
